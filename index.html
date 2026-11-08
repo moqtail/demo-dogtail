@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dogfight by MOQtail</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0b1020;
+        color: #e5e7eb;
+        font:
+          14px system-ui,
+          sans-serif;
+        overflow: hidden;
+        touch-action: none;
+        user-select: none;
+      }
+      canvas {
+        display: block;
+        margin: auto;
+      }
+      #settings {
+        position: fixed;
+        top: 8px;
+        right: 12px;
+        background: #111827cc;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        padding: 4px 10px;
+      }
+      #settings summary {
+        cursor: pointer;
+      }
+      #settings fieldset {
+        border: 0;
+        margin: 6px 0 2px;
+        padding: 0;
+        display: grid;
+        gap: 6px;
+      }
+      #settings legend {
+        color: #9ca3af;
+        padding: 0;
+        margin-bottom: 4px;
+      }
+      #hud {
+        position: fixed;
+        top: 8px;
+        left: 12px;
+        white-space: pre;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">Connecting…</div>
+    <details id="settings">
+      <summary>⚙ Settings</summary>
+      <fieldset>
+        <legend>Sounds</legend>
+        <label><input type="checkbox" data-sound="fire" /> Firing</label>
+        <label><input type="checkbox" data-sound="hit" /> Getting hit</label>
+        <label><input type="checkbox" data-sound="death" /> Shot down</label>
+      </fieldset>
+    </details>
+    <canvas id="game"></canvas>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

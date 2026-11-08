@@ -1,0 +1,92 @@
+/**
+ * Copyright 2026 The MOQtail Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { LiveTrackSource, MOQtailClient } from 'moqtail/client'
+import { FullTrackName, Location, MoqtObject, ObjectForwardingPreference, RequestError, Tuple } from 'moqtail/model'
+import { decode, encode, type EventMsg, type PosMsg } from './game'
+
+export type NetCallbacks = {
+  onPos: (player: string, m: PosMsg) => void
+  onEvent: (player: string, m: EventMsg) => void
+}
+
+/** One outgoing track: objects go into a stream the client serves to the relay. */
+async function openTrack(client: MOQtailClient, ns: Tuple, name: string, priority: number) {
+  const ftn = FullTrackName.tryNew(ns, name)
+  let ctrl: ReadableStreamDefaultController<MoqtObject> | null = null
+  const stream = new ReadableStream<MoqtObject>({ start: (c) => void (ctrl = c) })
+  client.addOrUpdateTrack({
+    fullTrackName: ftn,
+    trackSource: { live: new LiveTrackSource(stream) },
+    publisherPriority: priority,
+  })
+  const res = await client.publish(ftn, true, client.trackSources.get(ftn.toString())!.trackAlias!)
+  if (res instanceof RequestError) throw new Error(`relay rejected ${name}: ${res.reasonPhrase?.phrase}`)
+  return (group: bigint, object: bigint, payload: Uint8Array) =>
+    ctrl?.enqueue(
+      MoqtObject.newWithPayload(
+        ftn,
+        new Location(group, object),
+        priority,
+        ObjectForwardingPreference.Subgroup,
+        0,
+        null,
+        payload,
+      ),
+    )
+}
+
+/** `certHash` (hex SHA-256 of the relay cert) pins a self-signed relay cert; empty uses normal CA checks. */
+export async function connect(relayUrl: string, room: string, me: string, certHash: string, cb: NetCallbacks) {
+  const transportOptions: WebTransportOptions = certHash
+    ? {
+        serverCertificateHashes: [
+          { algorithm: 'sha-256', value: Uint8Array.from(certHash.match(/../g)!, (h) => parseInt(h, 16)) },
+        ],
+      }
+    : {}
+  const client = await MOQtailClient.new({ url: relayUrl, transportOptions, enableDatagrams: false })
+  const roomNs = `dogfight/${room}`
+  const myNs = Tuple.fromUtf8Path(`${roomNs}/${me}`)
+
+  await client.publishNamespace(myNs)
+  const sendPosObj = await openTrack(client, myNs, 'pos', 0)
+  const sendEventObj = await openTrack(client, myNs, 'events', 1)
+
+  // Every peer track under the room prefix, now and later, arrives here as a relay-pushed PUBLISH.
+  client.onPeerPublish = (msg, stream) => {
+    const player = msg.fullTrackName.namespace.toUtf8Path().split('/').filter(Boolean).pop()!
+    const track = new TextDecoder().decode(msg.fullTrackName.name)
+    void (async () => {
+      for await (const obj of stream as unknown as AsyncIterable<MoqtObject>) {
+        if (!obj.payload) continue
+        if (track === 'pos') cb.onPos(player, decode<PosMsg>(obj.payload))
+        else if (track === 'events') cb.onEvent(player, decode<EventMsg>(obj.payload))
+      }
+    })().catch((err) => console.warn('dogfight: stream ended', player, track, err))
+  }
+  const { response } = await client.subscribeTracks(Tuple.fromUtf8Path(roomNs))
+  if (response instanceof RequestError) throw new Error('relay rejected SUBSCRIBE_TRACKS')
+
+  // One group per message on both tracks: each snapshot and each event stands alone, so a
+  // subscriber that joins late, or a stream the relay stops, loses at most that one message.
+  let posGroup = 0n
+  let eventGroup = 0n
+  return {
+    sendPos: (m: PosMsg) => sendPosObj(posGroup++, 0n, encode(m)),
+    sendEvent: (m: EventMsg) => sendEventObj(eventGroup++, 0n, encode(m)),
+  }
+}
