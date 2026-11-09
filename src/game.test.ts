@@ -20,8 +20,10 @@ import {
   H,
   W,
   decode,
+  ease,
   encode,
   findHit,
+  predict,
   stepBullets,
   stepPlane,
   turnToward,
@@ -66,6 +68,24 @@ describe('game rules', () => {
   it('expires bullets', () => {
     const b: Bullet = { x: 0, y: 0, a: 0, age: BULLET_LIFE - 0.01, owner: 'x' }
     expect(stepBullets([b], 0.02)).toHaveLength(0)
+  })
+
+  it('eases a remote plane across the wrap, not the long way round', () => {
+    const shown = { x: W - 5, y: 10, a: 0, hp: 3 }
+    ease(shown, { x: 5, y: 10, a: 0, hp: 2 }, 0.1)
+    expect(shown.x > W - 5 || shown.x < 5).toBe(true)
+    expect(shown.hp).toBe(2)
+  })
+
+  it('jumps instead of easing after a respawn', () => {
+    const shown = { x: 100, y: 100, a: 0, hp: 0 }
+    ease(shown, { x: 900, y: 600, a: 1, hp: 3 }, 0.016)
+    expect(shown).toEqual({ x: 900, y: 600, a: 1, hp: 3 })
+  })
+
+  it('predicts along the heading, capped for stale snapshots', () => {
+    expect(predict({ x: 100, y: 100, a: 0, hp: 3 }, 0.1).x).toBeCloseTo(118)
+    expect(predict({ x: 100, y: 100, a: 0, hp: 3 }, 5).x).toBeCloseTo(145)
   })
 
   it('round-trips wire messages', () => {

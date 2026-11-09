@@ -26,6 +26,7 @@ export const BULLET_LIFE = 1.2 // s
 export const FIRE_COOLDOWN = 0.2 // s
 export const HIT_RADIUS = 14
 export const MAX_HP = 3
+export const RESPAWN_DELAY = 2 // s; must stay under the 3 s silence after which peers drop a player
 
 export type Plane = { x: number; y: number; a: number; hp: number }
 export type Bullet = { x: number; y: number; a: number; age: number; owner: string }
@@ -57,6 +58,34 @@ export function stepPlane(p: Plane, input: Input, dt: number): void {
   const v = input.boost ? BOOST : SPEED
   p.x = wrap(p.x + Math.cos(p.a) * v * dt, W)
   p.y = wrap(p.y + Math.sin(p.a) * v * dt, H)
+}
+
+/** Signed shortest offset from `from` to `to` on a wrapping axis of length `max`. */
+const wrapDelta = (from: number, to: number, max: number) => wrap(to - from + max / 2, max) - max / 2
+
+/**
+ * Where a remote plane probably is now: its last snapshot carried forward `age` seconds along its heading.
+ * shortcut: assumes cruise speed (snapshots don't say if the plane is boosting), so a boosting plane lags
+ * a little; add speed to PosMsg if that shows.
+ */
+export function predict(p: Plane, age: number): Plane {
+  const t = Math.min(age, 0.25) // past this the snapshot is too stale to extrapolate
+  return { ...p, x: wrap(p.x + Math.cos(p.a) * SPEED * t, W), y: wrap(p.y + Math.sin(p.a) * SPEED * t, H) }
+}
+
+/** Moves the drawn plane `shown` part of the way to `target`, across the wrap, so remote planes glide. */
+export function ease(shown: Plane, target: Plane, dt: number): void {
+  const k = 1 - Math.exp(-dt * 12) // closes ~70% of the gap per 100 ms, whatever the frame rate
+  const dx = wrapDelta(shown.x, target.x, W)
+  const dy = wrapDelta(shown.y, target.y, H)
+  if (Math.hypot(dx, dy) > 200)
+    Object.assign(shown, target) // respawned: jump, don't fly across the map
+  else {
+    shown.x = wrap(shown.x + dx * k, W)
+    shown.y = wrap(shown.y + dy * k, H)
+    shown.a += Math.atan2(Math.sin(target.a - shown.a), Math.cos(target.a - shown.a)) * k
+  }
+  shown.hp = target.hp
 }
 
 /** Advances bullets and drops the expired ones. */

@@ -2,14 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
     <title>Dogfight by MOQtail</title>
     <style>
       html,
       body {
         margin: 0;
         height: 100%;
-        background: #0b1020;
+        background: #020308;
         color: #e5e7eb;
         font:
           14px system-ui,
@@ -17,10 +17,53 @@
         overflow: hidden;
         touch-action: none;
         user-select: none;
+        /* iPad: no selection box, magnifier or long-press menu over the game. */
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
       }
       canvas {
         display: block;
         margin: auto;
+        outline: 2px solid #334155;
+        outline-offset: -2px;
+      }
+      /* On-screen controls, only on touch screens: turn with the left thumb, fire with the right. */
+      #touch {
+        display: none;
+      }
+      @media (pointer: coarse) {
+        #touch {
+          display: block;
+        }
+      }
+      #touch button {
+        position: fixed;
+        bottom: 24px;
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        border: 2px solid #64748b;
+        background: #1e293b99;
+        color: #e5e7eb;
+        font: bold 28px system-ui;
+        touch-action: none;
+      }
+      #touch button.held {
+        background: #475569cc;
+      }
+      #touch [data-key='KeyA'] {
+        left: 24px;
+      }
+      #touch [data-key='KeyD'] {
+        left: 128px;
+      }
+      #touch [data-key='Space'] {
+        right: 24px;
+        width: 120px;
+        height: 120px;
+        border-color: #f87171;
+        font-size: 22px;
       }
       #settings {
         position: fixed;
@@ -66,6 +109,11 @@
       </fieldset>
     </details>
     <canvas id="game"></canvas>
+    <div id="touch">
+      <button data-key="KeyA" aria-label="Turn left">◀</button>
+      <button data-key="KeyD" aria-label="Turn right">▶</button>
+      <button data-key="Space" aria-label="Fire">FIRE</button>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
