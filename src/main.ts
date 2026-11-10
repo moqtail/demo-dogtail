@@ -63,6 +63,7 @@ addEventListener('keydown', (e) => {
   if (TURN_KEYS.includes(e.code)) mouse = null // keyboard takes over until the mouse moves again
   if (e.code === 'Space') e.preventDefault()
   if (e.code === 'KeyF' && !e.repeat) toggleFullscreen()
+  if (e.code === 'KeyM' && !e.repeat) toggleMap()
 })
 addEventListener('keyup', (e) => keys.delete(e.code))
 
@@ -311,10 +312,35 @@ let cam = { x: W / 2, y: H / 2 } // arena point at the centre of the view
 function fit() {
   const fitScale = Math.min(innerWidth / W, innerHeight / H)
   const s = fitScale >= ZOOM_BELOW ? fitScale : 1
+  mapButton.hidden = s !== 1 // the minimap only exists while zoomed in
   view = { s, w: Math.min(W, innerWidth / s), h: Math.min(H, innerHeight / s) }
   canvas.width = view.w * s
   canvas.height = view.h * s
 }
+// Minimap (zoomed only): the whole arena in a corner, on by default, toggled with 🗺 or M and
+// remembered on this device.
+const MAP_KEY = 'dogfight.map'
+let mapOn = true
+try {
+  mapOn = localStorage.getItem(MAP_KEY) !== 'off'
+} catch {
+  // Storage blocked: on.
+}
+const mapButton = document.getElementById('map')!
+mapButton.addEventListener('click', () => {
+  mapButton.blur() // or Space, the fire key, would press it again
+  toggleMap()
+})
+function toggleMap() {
+  mapOn = !mapOn
+  mapButton.setAttribute('aria-pressed', String(mapOn))
+  try {
+    localStorage.setItem(MAP_KEY, mapOn ? 'on' : 'off')
+  } catch {
+    // Storage blocked: lasts until reload.
+  }
+}
+mapButton.setAttribute('aria-pressed', String(mapOn))
 addEventListener('resize', fit)
 fit()
 
@@ -419,6 +445,47 @@ function drawArrows() {
     ctx.lineTo(-6, 7)
     ctx.fill()
     ctx.restore()
+  }
+}
+
+/** Zoomed in: the whole arena at the bottom centre, between the touch controls. */
+function drawMap() {
+  const mw = 120
+  const k = mw / W
+  const mh = H * k
+  const x0 = (canvas.width - mw) / 2
+  const y0 = canvas.height - mh - 16
+  ctx.setTransform(1, 0, 0, 1, x0, y0)
+  ctx.fillStyle = '#11182799'
+  ctx.strokeStyle = '#475569'
+  ctx.lineWidth = 1
+  ctx.fillRect(0, 0, mw, mh)
+  ctx.strokeRect(0, 0, mw, mh)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, 0, mw, mh)
+  ctx.clip()
+  // What's on screen; it wraps across the edges like the arena does.
+  ctx.strokeStyle = '#94a3b8'
+  for (const ox of [-W, 0, W])
+    for (const oy of [-H, 0, H])
+      ctx.strokeRect((cam.x - view.w / 2 + ox) * k, (cam.y - view.h / 2 + oy) * k, view.w * k, view.h * k)
+  ctx.restore()
+  const dot = (p: Plane, color: string, r: number) => {
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(p.x * k, p.y * k, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  for (const [id, peer] of peers) {
+    if (peer.shown.hp <= 0) continue
+    ctx.globalAlpha = peer.shown.away ? 0.3 : 1
+    dot(peer.shown, metas.get(id)?.color ?? '#9ca3af', 2)
+  }
+  ctx.globalAlpha = 1
+  if (deadFor <= 0) {
+    dot(plane, '#f9fafb', 4.5) // a white ring around your color, so you stand out
+    dot(plane, myColor, 3)
   }
 }
 
@@ -588,6 +655,7 @@ function frame(now: number) {
       ctx.restore()
     }
   if (zoomed) drawArrows()
+  if (zoomed && mapOn) drawMap()
 
   const status = alive
     ? `HP ${plane.hp}/${maxHpFor(peers.size + 1)}`

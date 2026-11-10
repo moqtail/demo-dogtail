@@ -82,6 +82,9 @@
         border-color: #f87171;
         font-size: 22px;
       }
+      #map[aria-pressed='false'] {
+        opacity: 0.5;
+      }
       #tools {
         position: fixed;
         top: 8px;
@@ -92,6 +95,7 @@
         gap: 8px;
       }
       #fullscreen,
+      #map,
       #leave {
         font: inherit;
         color: inherit;
@@ -102,6 +106,7 @@
         padding: 4px 10px;
       }
       #fullscreen[hidden],
+      #map[hidden],
       #leave[hidden] {
         display: none;
       }
@@ -292,6 +297,7 @@
     <div id="hud">Connecting…</div>
     <div id="tools">
       <button id="leave" title="Leave the game" hidden>Leave</button>
+      <button id="map" title="Minimap (M)" aria-label="Minimap" hidden>🗺</button>
       <button id="fullscreen" title="Full screen (F)" aria-label="Full screen">⛶</button>
       <details id="settings">
         <summary>⚙ Settings</summary>
