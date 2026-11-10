@@ -15,14 +15,14 @@
  */
 
 /**
- * Game analytics in PostHog: join, leave (with session length, kills and deaths), room_full and a
+ * Analytics in PostHog: page views (for Web analytics), plus game events join, leave (with session length, kills and deaths), room_full and a
  * room-size sample once a minute. Cookieless (nothing kept in the browser, so no consent banner) and
  * keyed by the random player id; names are not sent. Off on localhost, so dev and bot runs don't count.
  */
 const enabled =
   !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)
 
-/** `leave` goes as a beacon, which survives the page closing. PostHog loads in the background after joining (it is larger than the game); events wait for it. */
+/** `leave` goes as a beacon, which survives the page closing. PostHog loads in the background (it is larger than the game); events wait for it. */
 export function startAnalytics(player: string) {
   const ready = enabled
     ? import('posthog-js').then(({ default: posthog }) => {
@@ -30,7 +30,7 @@ export function startAnalytics(player: string) {
           api_host: 'https://eu.i.posthog.com',
           persistence: 'memory', // cookieless
           autocapture: false,
-          capture_pageview: false,
+          capture_pageview: true, // for the Web analytics dashboard: visits, referrers, countries
           disable_session_recording: true,
         })
         posthog.identify(player)

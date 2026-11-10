@@ -46,6 +46,7 @@ const params = new URLSearchParams(location.search)
 // With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
 const relay = params.get('relay') ?? (__CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.moqtail.dev')
 const me = Math.random().toString(16).slice(2, 8)
+const analytics = startAnalytics(me) // at page load, so visits that never join count too
 const debug = params.has('debug') // ?debug: network stats shown from the start
 const clock = syncClock() // starts now, so it is ready by the time the player has joined
 
@@ -215,7 +216,6 @@ joinForm.hidden = true
 const leave = document.getElementById('leave')!
 leave.hidden = false
 leave.addEventListener('click', () => location.reload())
-const analytics = startAnalytics(me)
 const joinedAt = Date.now()
 hud.textContent = 'Connecting…'
 

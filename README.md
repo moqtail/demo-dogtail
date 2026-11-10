@@ -80,7 +80,7 @@ All objects travel as **datagrams**; the tracks are still announced with `PUBLIS
 
 ## Analytics
 
-PostHog (`src/analytics.ts`) gets `join` (room, touch or desktop), `leave` (session seconds, kills, deaths), `room_full` and a once-a-minute `room_size`. It is cookieless, keyed by the random player id (names are not sent), loads after joining, and is off on localhost and LAN addresses so dev and bot runs don't count.
+PostHog (`src/analytics.ts`) gets page views (its Web analytics dashboard), plus `join` (room, touch or desktop), `leave` (session seconds, kills, deaths), `room_full` and a once-a-minute `room_size`. It is cookieless, keyed by the random player id (names are not sent), loads in the background, and is off on localhost and LAN addresses so dev and bot runs don't count.
 
 ## Load test
 
