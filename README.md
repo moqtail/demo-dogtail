@@ -16,7 +16,7 @@ npm run build      # static site in dist/
 npm run deploy     # build and upload to Cloudflare Workers (dogfight.zafergurel.com), see wrangler.jsonc
 ```
 
-Query params: `?room=<name>` (default `lobby`), `?relay=<moqt:// or https:// url>`.
+Query params: `?room=<name>` (default `lobby`), `?relay=<moqt:// or https:// url>`, `?debug` (shows this device's clock offset in the top bar).
 
 ### LAN play with your own relay
 
@@ -55,6 +55,7 @@ All objects travel as **datagrams**; the tracks are still announced with `PUBLIS
 - A player whose `pos` has been silent for 3 s is dropped.
 - Other planes are drawn where their last snapshot predicts they are now, eased toward that point so they glide instead of jumping every 50 ms.
 - A shot-down plane keeps sending `pos` with `hp` 0 for the 2 s respawn delay; that tells peers to hide it.
+- Shots carry the time they were fired on a shared clock: each device reads `time.akamai.com` a few times at start and once a minute, and keeps the offset from the quickest round trip. Receivers fast-forward a bullet by its travel time (at most 0.3 s), so it appears where the shooter fired it. Without that clock, shots go out unstamped and are not adjusted.
 - Whoever gets hit decides the hit: each client simulates every bullet and reports hits on its _own_ plane in its own `events` track. Each client only writes its own tracks, so no referee is needed.
 
 ## Plan (iterative)

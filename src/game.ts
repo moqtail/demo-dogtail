@@ -38,6 +38,7 @@ export type Input = { left: boolean; right: boolean; boost: boolean; target?: nu
 /** Messages carried on the wire; `pos` track objects are PosMsg, `events` objects are EventMsg. */
 export type PosMsg = Plane
 export type EventMsg =
+  /** `ts`: when fired, on the shared reference clock (net.ts syncClock); absent if not synced. */
   | { t: 'shot'; x: number; y: number; a: number; ts?: number }
   | { t: 'hit'; by: string }
   | { t: 'kill'; by: string; n: number }
@@ -113,12 +114,47 @@ export function ease(shown: Plane, target: Plane, dt: number): void {
 export const MAX_LAG = 0.3 // s
 
 /**
- * How long a shot took to arrive, from the shooter's wall clock (`ts`) to ours, clamped to 0..MAX_LAG.
- * Remote bullets are advanced by this so they line up with where the shooter fired them.
- * shortcut: trusts device clocks (normally synced to a few tens of ms); measure RTT if skew shows.
+ * One NTP-style exchange, all in ms: we asked at t1 (our clock), the other side got it at t2 and
+ * replied at t3 (its clock), the reply arrived at t4. Returns its clock minus ours, and the round trip.
+ * A time server that only stamps once passes the same value as t2 and t3.
  */
-export const shotLag = (ts: number | undefined, now: number) =>
-  ts === undefined ? 0 : Math.min(Math.max((now - ts) / 1000, 0), MAX_LAG)
+export function clockSample(t1: number, t2: number, t3: number, t4: number): { offset: number; rtt: number } {
+  return { offset: (t2 - t1 + (t3 - t4)) / 2, rtt: t4 - t1 - (t3 - t2) }
+}
+
+/** A clock offset, from the recent exchanges with the shortest round trip (least queuing skew). */
+export class ClockSync {
+  #samples: { offset: number; rtt: number }[] = []
+
+  add(s: { offset: number; rtt: number }): void {
+    if (!Number.isFinite(s.offset) || !(s.rtt >= 0)) return // garbage from the wire
+    this.#samples.push(s)
+    if (this.#samples.length > 50) this.#samples.shift()
+  }
+
+  /** The sample trusted: shortest round trip. */
+  get best(): { offset: number; rtt: number } | undefined {
+    let best: { offset: number; rtt: number } | undefined
+    for (const s of this.#samples) if (!best || s.rtt < best.rtt) best = s
+    return best
+  }
+
+  /** The other clock minus ours in ms, or undefined before the first exchange. */
+  get offset(): number | undefined {
+    return this.best?.offset
+  }
+}
+
+/**
+ * How long a shot took to arrive, in s: from its `ts` on the reference clock to now on ours, moved onto
+ * the reference by `offset` (reference minus ours), clamped to 0..MAX_LAG. Remote bullets are advanced
+ * by this so they line up with where the shooter fired them. 0 until our offset is known.
+ */
+export function shotLag(ts: number | undefined, now: number, offset: number | undefined): number {
+  if (ts === undefined || offset === undefined) return 0
+  const lag = (now - (ts - offset)) / 1000
+  return Number.isFinite(lag) ? Math.min(Math.max(lag, 0), MAX_LAG) : 0
+}
 
 /** Advances bullets and drops the expired ones. */
 export function stepBullets(bullets: Bullet[], dt: number): Bullet[] {

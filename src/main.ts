@@ -33,7 +33,7 @@ import {
   type MetaMsg,
   type Plane,
 } from './game'
-import { connect } from './net'
+import { connect, syncClock } from './net'
 import { play, setSound, soundOn, type SoundName } from './sound'
 
 declare const __CERT_HASH__: string // injected by vite.config.ts
@@ -42,6 +42,8 @@ const params = new URLSearchParams(location.search)
 // With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
 const relay = params.get('relay') ?? (__CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.moqtail.dev')
 const me = Math.random().toString(16).slice(2, 8)
+const debug = params.has('debug') // ?debug: clock sync figures in the HUD
+const clock = syncClock() // starts now, so it is ready by the time the player has joined
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!
@@ -207,7 +209,9 @@ const net = await connect(relay, room, me, __CERT_HASH__, {
       killsSeen.add(key)
     }
     if (m.t === 'shot')
-      bullets.push(...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now())))
+      bullets.push(
+        ...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now(), clock.offset)),
+      )
     else {
       const peer = peers.get(id)
       if (peer) boom(peer.shown, m.t === 'kill')
@@ -337,7 +341,8 @@ function frame(now: number) {
     shieldFor = 0 // firing gives up the spawn shield, so it can't be used to attack safely
     const shot = { x: plane.x, y: plane.y, a: plane.a }
     bullets.push({ ...shot, age: 0, owner: me })
-    net.sendEvent({ t: 'shot', ...shot, ts: Date.now() })
+    const offset = clock.offset
+    net.sendEvent({ t: 'shot', ...shot, ts: offset === undefined ? undefined : Date.now() + offset })
     play('fire')
   }
   bullets = stepBullets(bullets, dt)
@@ -390,7 +395,10 @@ function frame(now: number) {
   for (const b of booms) drawBoom(b)
 
   const status = alive ? `HP ${plane.hp}/${MAX_HP}` : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
-  hud.textContent = `room ${room} · ${status} · players ${peers.size + 1}`
+  const sync = debug ? clock.best : undefined
+  hud.textContent =
+    `room ${room} · ${status} · players ${peers.size + 1}` +
+    (sync ? ` · clock ${Math.round(sync.offset)} ms (rtt ${Math.round(sync.rtt)})` : debug ? ' · clock not synced' : '')
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

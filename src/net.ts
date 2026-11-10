@@ -16,7 +16,7 @@
 
 import { LiveTrackSource, MOQtailClient } from 'moqtail/client'
 import { FullTrackName, Location, MoqtObject, ObjectForwardingPreference, RequestError, Tuple } from 'moqtail/model'
-import { cleanMeta, decode, encode, type EventMsg, type MetaMsg, type PosMsg } from './game'
+import { ClockSync, cleanMeta, clockSample, decode, encode, type EventMsg, type MetaMsg, type PosMsg } from './game'
 
 export type NetCallbacks = {
   onPos: (player: string, m: PosMsg) => void
@@ -117,4 +117,30 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
     sendEvent: (m: EventMsg) => sendEventObj(eventGroup++, 0n, encode(m)),
     sendMeta: (m: MetaMsg) => sendMetaObj(metaGroup++, 0n, encode(m)),
   }
+}
+
+/**
+ * Our clock's offset from a shared reference, so shot times mean the same on every device: a few
+ * quick reads of Akamai's time server at start, then one a minute; the fastest round trip wins.
+ * shortcut: depends on time.akamai.com; if it can't be reached, shots go out unstamped and are not
+ * fast-forwarded.
+ */
+export function syncClock(): ClockSync {
+  const clock = new ClockSync()
+  const read = async () => {
+    try {
+      const t1 = Date.now()
+      const res = await fetch('https://time.akamai.com/?iso&ms', { cache: 'no-store' })
+      const server = Date.parse(await res.text())
+      const t4 = Date.now()
+      clock.add(clockSample(t1, server, server, t4)) // a bad reply parses to NaN and is ignored
+    } catch {
+      // Offline or blocked: keep what we have.
+    }
+  }
+  void (async () => {
+    for (let i = 0; i < 5; i++) await read()
+  })()
+  setInterval(read, 60_000)
+  return clock
 }

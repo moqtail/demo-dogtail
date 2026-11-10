@@ -24,6 +24,8 @@ import {
   ease,
   encode,
   findHit,
+  ClockSync,
+  clockSample,
   predict,
   shotLag,
   stepBullets,
@@ -101,11 +103,29 @@ describe('game rules', () => {
     expect(cleanMeta({}).name).toBe('?')
   })
 
+  it('works out a clock offset from one exchange', () => {
+    // Other clock is 5000 ms ahead; 40 ms each way; the other side holds the reply for 10 ms.
+    expect(clockSample(0, 5040, 5050, 90)).toEqual({ offset: 5000, rtt: 80 })
+    // A time server stamps once.
+    expect(clockSample(0, 5040, 5040, 80)).toEqual({ offset: 5000, rtt: 80 })
+  })
+
+  it('trusts the exchange with the shortest round trip', () => {
+    const sync = new ClockSync()
+    expect(sync.offset).toBeUndefined()
+    sync.add({ offset: 5100, rtt: 300 }) // queued: skewed
+    sync.add({ offset: 5000, rtt: 80 })
+    sync.add({ offset: NaN, rtt: 10 }) // garbage: ignored
+    expect(sync.offset).toBe(5000)
+  })
+
   it('fast-forwards remote shots by their travel time, within bounds', () => {
-    expect(shotLag(1000, 1100)).toBeCloseTo(0.1)
-    expect(shotLag(1000, 900)).toBe(0) // shooter's clock ahead of ours
-    expect(shotLag(1000, 9000)).toBe(0.3)
-    expect(shotLag(undefined, 9000)).toBe(0)
+    // Reference clock is 5000 ms ahead of ours: fired at reference 6000 = our 1000, seen at our 1100.
+    expect(shotLag(6000, 1100, 5000)).toBeCloseTo(0.1)
+    expect(shotLag(6000, 900, 5000)).toBe(0)
+    expect(shotLag(6000, 9000, 5000)).toBe(0.3)
+    expect(shotLag(6000, 1100, undefined)).toBe(0) // offset not known yet
+    expect(shotLag(undefined, 1100, 5000)).toBe(0)
   })
 
   it('round-trips wire messages', () => {
