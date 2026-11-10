@@ -26,6 +26,7 @@ Without a certificate in `cert/`, `npm run dev` serves plain http and uses the p
 ```bash
 npm run build      # static site in dist/
 npm run deploy     # build and upload to Cloudflare Workers (dogtail.moqtail.dev), see wrangler.jsonc
+npm run deploy:zafergurel  # the same build on dogtail.zafergurel.com, a separate Worker
 ```
 
 Query params: `?room=<name>` (default: the room this device last joined, or a random one like `falcon-482` on a first visit), `?relay=<moqt:// or https:// url>`, `?debug` (opens the network stats panel).
