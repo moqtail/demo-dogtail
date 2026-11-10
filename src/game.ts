@@ -149,6 +149,20 @@ export function cleanEvent(e: unknown): EventMsg | undefined {
   return undefined
 }
 
+export const ZOOM_BELOW = 0.6 // canvas px per arena unit under which planes get too small to play
+export const ZOOM_MAX = 1.5
+
+/**
+ * The view's scale (canvas px per arena unit) on a screen that shows the whole arena at `fit`, with the
+ * player's `zoom` (1 = default). Big screens default to the whole arena, small ones to full size; it
+ * never goes below the whole arena or ZOOM_BELOW. Returns the zoom too, clamped to what was possible.
+ */
+export function viewScale(fit: number, zoom: number): { s: number; zoom: number } {
+  const base = fit >= ZOOM_BELOW ? fit : 1
+  const s = Math.min(Math.max(base * zoom, fit, ZOOM_BELOW), Math.max(ZOOM_MAX, fit))
+  return { s, zoom: s / base }
+}
+
 export const wrap = (v: number, max: number) => ((v % max) + max) % max
 
 /** Health for a room of `players`: MAX_HP up to 10, one more for every 10 beyond, as busy rooms mean more fire. */

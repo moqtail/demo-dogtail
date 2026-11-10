@@ -22,6 +22,7 @@ import {
   cleanEvent,
   cleanMeta,
   cleanPos,
+  viewScale,
   powerUpsAt,
   POWER_SLOT,
   POWER_LIFE,
@@ -210,5 +211,15 @@ describe('game rules', () => {
     expect(cleanEvent({ t: 'grab', k: '225000015:1' })).toEqual({ t: 'grab', k: '225000015:1' })
     expect(cleanEvent({ t: 'grab', k: 'anything' })).toBeUndefined()
     expect(cleanEvent({ t: 'nope' })).toBeUndefined()
+  })
+
+  it('zooms between the whole arena and 1.5x, never so far out that planes are specks', () => {
+    expect(viewScale(0.8, 1)).toEqual({ s: 0.8, zoom: 1 }) // a computer: the whole arena by default
+    expect(viewScale(0.8, 1.5).s).toBeCloseTo(1.2)
+    expect(viewScale(0.8, 0.5)).toEqual({ s: 0.8, zoom: 1 }) // can't zoom out past the whole arena
+    expect(viewScale(0.8, 9)).toEqual({ s: 1.5, zoom: 1.5 / 0.8 })
+    expect(viewScale(0.36, 1).s).toBe(1) // a phone: full size by default
+    expect(viewScale(0.36, 0.1).s).toBe(0.6) // and out only to ZOOM_BELOW
+    expect(viewScale(2, 1).s).toBe(2) // a screen bigger than the arena
   })
 })

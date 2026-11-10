@@ -35,7 +35,7 @@ Every player opens `https://<your-ip>:5174` and clicks through the certificate w
 
 Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: the plane steers toward the cursor, and holding the left button fires; pressing a turn key hands control back to the keyboard until the mouse moves again.
 
-On small screens (phones), where the whole arena would shrink planes to a few pixels, the view zooms to full size and follows your plane; arrows at the screen edge point to players out of view. Computers and tablets show the whole arena.
+Computers and tablets start with the whole arena in view; phones, where that would shrink planes to a few pixels, start at full size. Zoom in or out with the mouse wheel, a trackpad or two-finger pinch, or **+ / −** (**0** resets), from the whole arena to 1.5× (phones zoom out only so far); it is remembered on the device. Zoomed in, the view follows your plane; arrows at the screen edge point to players out of view.
 
 The scoreboard (top right) shows the top 10 by kills / deaths, plus your own rank if you are further down. Planes have 3 hearts in a room of up to 10, and one more for every 10 players beyond that (7 at 50), as busier rooms mean more fire; the number is set at each spawn. A room holds 50 players; joining a full one sends you back to the join screen with a fresh room.
 

@@ -34,6 +34,7 @@ import {
   type MetaMsg,
   type Plane,
   type PowerUp,
+  viewScale,
   PICKUP_RADIUS,
   POWER_ICON,
   powerUpsAt,
@@ -70,6 +71,9 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF' && !e.repeat) toggleFullscreen()
   if (e.code === 'KeyM' && !e.repeat) minimap.flip()
   if (e.code === 'KeyE' && !e.repeat) showReactions.flip()
+  if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomBy(1.1)
+  if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomBy(1 / 1.1)
+  if (e.code === 'Digit0' && !e.repeat) zoomBy(0)
   const r = /^Digit([1-4])$/.exec(e.code)
   if (r && !e.repeat) react(REACTIONS[Number(r[1]) - 1]!)
 })
@@ -236,19 +240,73 @@ const minimap = setting('dogtail.map', 'map')
 const reactBar = document.getElementById('reactions')!
 const showReactions = setting('dogtail.reactions', 'react-toggle', (on) => (reactBar.hidden = !on || !joined))
 
-// Screens big enough show the whole arena. On a phone that would shrink a plane to a few pixels, so
-// there the view zooms to full size and follows your plane, with arrows pointing at players off screen.
-const ZOOM_BELOW = 0.6 // arena scale under which the view zooms in
+// Screens big enough show the whole arena; on a phone that would shrink a plane to a few pixels, so
+// there the view starts at full size. Either way the player can zoom (wheel, pinch, +/-; 0 resets),
+// remembered on this device. Zoomed in, the view follows your plane, with arrows pointing at players
+// off screen and the minimap.
+const ZOOM_KEY = 'dogtail.zoom'
+let zoom = 1
+try {
+  zoom = Number(localStorage.getItem(ZOOM_KEY)) || 1
+} catch {
+  // Storage blocked: the default.
+}
 let view: View = { s: 1, w: W, h: H }
 let cam = { x: W / 2, y: H / 2 } // arena point at the centre of the view
 function fit() {
-  const fitScale = Math.min(innerWidth / W, innerHeight / H)
-  const s = fitScale >= ZOOM_BELOW ? fitScale : 1
-  minimap.button.hidden = s !== 1 // the minimap only exists while zoomed in
-  view = { s, w: Math.min(W, innerWidth / s), h: Math.min(H, innerHeight / s) }
-  canvas.width = view.w * s
-  canvas.height = view.h * s
+  const v = viewScale(Math.min(innerWidth / W, innerHeight / H), zoom)
+  zoom = v.zoom
+  view = { s: v.s, w: Math.min(W, innerWidth / v.s), h: Math.min(H, innerHeight / v.s) }
+  minimap.button.hidden = view.w >= W && view.h >= H // the minimap only exists while zoomed in
+  canvas.width = view.w * v.s
+  canvas.height = view.h * v.s
 }
+function zoomBy(factor: number) {
+  zoom = factor ? zoom * factor : 1 // 0: back to the default
+  fit()
+  try {
+    localStorage.setItem(ZOOM_KEY, String(zoom))
+  } catch {
+    // Storage blocked: lasts until reload.
+  }
+}
+// Mouse wheel, and trackpad pinch, which browsers send as a wheel with ctrlKey (page zoom, otherwise).
+addEventListener(
+  'wheel',
+  (e) => {
+    if (onSettings(e)) return
+    e.preventDefault()
+    zoomBy(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002)))
+  },
+  { passive: false },
+)
+// Safari on a Mac sends a trackpad pinch as gesture events. On iPhone and iPad they also fire for any
+// two fingers, such as a thumb on ◀ and one on FIRE, so there only the pinch below counts.
+let gestureScale = 1
+const gesture = (e: Event & { scale?: number }) => {
+  e.preventDefault() // no page zoom
+  if (navigator.maxTouchPoints > 0 || e.scale === undefined) return
+  zoomBy(e.scale / gestureScale)
+  gestureScale = e.scale
+}
+addEventListener('gesturestart', (e) => (gesture(e), (gestureScale = 1)))
+addEventListener('gesturechange', gesture)
+// Touch: two fingers pinching on the game itself (not on the buttons).
+const pinch = new Map<number, { x: number; y: number }>()
+const spread = () => {
+  const [a, b] = [...pinch.values()]
+  return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0
+}
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'touch') pinch.set(e.pointerId, { x: e.clientX, y: e.clientY })
+})
+canvas.addEventListener('pointermove', (e) => {
+  if (!pinch.has(e.pointerId)) return
+  const before = spread()
+  pinch.set(e.pointerId, { x: e.clientX, y: e.clientY })
+  if (pinch.size === 2 && before > 0) zoomBy(spread() / before)
+})
+for (const ev of ['pointerup', 'pointercancel'] as const) canvas.addEventListener(ev, (e) => pinch.delete(e.pointerId))
 addEventListener('resize', fit)
 fit()
 
