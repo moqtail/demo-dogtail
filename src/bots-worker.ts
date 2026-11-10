@@ -22,6 +22,8 @@
 
 import {
   COLORS,
+  PIC,
+  packPic,
   PILOTS,
   maxHpFor,
   SPAWN_SHIELD,
@@ -76,6 +78,15 @@ async function bot(i: number, relay: string) {
     })
   meta()
   setInterval(meta, 2000)
+  if (i % 2) {
+    // Every other bot flies with a picture: a gradient in its color's hue, enough to see it drawn.
+    const rgba = new Uint8ClampedArray(PIC * PIC * 4).map((_, k) => {
+      const [x, y, c] = [(k >> 2) % PIC, Math.floor((k >> 2) / PIC), k % 4]
+      return c === 3 ? 255 : [x * 12, y * 12, (i * 40) % 256][c]!
+    })
+    const pic = packPic(rgba)
+    setInterval(() => net.sendEvent({ t: 'pic', d: pic }), 3000)
+  }
   setInterval(() => {
     const dt = 0.1
     if (Math.random() < 0.05) turn = Math.floor(Math.random() * 3) - 1 // now and then: left, straight or right

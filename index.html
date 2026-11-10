@@ -181,6 +181,9 @@
         flex-wrap: nowrap; /* one row: 8 × 28px + gaps fit the form even on a phone */
         gap: 6px;
       }
+      #pilots {
+        gap: 4px; /* 9 with the picture slot */
+      }
       #colors legend,
       #pilots legend {
         color: #9ca3af;
@@ -217,6 +220,10 @@
       }
       #pilots input::before {
         content: attr(data-e);
+      }
+      #pilots input[value='pic'] {
+        background-size: cover;
+        image-rendering: pixelated;
       }
       #notice {
         margin: 0;
@@ -372,6 +379,10 @@
           <legend>Network</legend>
           <label><input type="checkbox" id="show-stats" /> Show stats (S)</label>
         </fieldset>
+        <fieldset>
+          <legend>Players</legend>
+          <label><input type="checkbox" id="show-pics" checked /> Show their pictures</label>
+        </fieldset>
       </details>
     </div>
     <canvas id="game"></canvas>
@@ -382,6 +393,7 @@
       <label>Your name <input type="text" name="name" maxlength="16" required autocomplete="nickname" /></label>
       <fieldset id="colors"><legend>Color</legend></fieldset>
       <fieldset id="pilots"><legend>Pilot</legend></fieldset>
+      <input type="file" id="pic-file" accept="image/*" hidden />
       <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
       <p id="notice"></p>
       <p id="invite"></p>

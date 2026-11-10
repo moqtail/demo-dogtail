@@ -37,7 +37,17 @@ export type Scene = {
   metas: Map<string, MetaMsg>
   /** The last reaction per player, or undefined while reactions are turned off. */
   reactions: Map<string, { e: string; at: number }> | undefined
-  me: { id: string; plane: Plane; alive: boolean; color: string; pilot: string; spawnedAt: number }
+  /** Players' picture pilots, or undefined while they are turned off. */
+  pics: Map<string, CanvasImageSource> | undefined
+  me: {
+    id: string
+    plane: Plane
+    alive: boolean
+    color: string
+    pilot: string
+    pic: CanvasImageSource | undefined
+    spawnedAt: number
+  }
   showMap: boolean
 }
 
@@ -73,10 +83,11 @@ function drawScene(ctx: CanvasRenderingContext2D, sc: Scene) {
   for (const [id, peer] of sc.peers) {
     const m = sc.metas.get(id)
     const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
-    if (peer.shown.hp > 0) drawPlane(ctx, sc, peer.shown, m?.color ?? GREY, label, m?.pilot ?? '', id)
+    if (peer.shown.hp > 0)
+      drawPlane(ctx, sc, peer.shown, m?.color ?? GREY, label, sc.pics?.get(id) ?? m?.pilot ?? '', id)
   }
   if (sc.me.alive) {
-    drawPlane(ctx, sc, sc.me.plane, sc.me.color, 'you', sc.me.pilot, sc.me.id)
+    drawPlane(ctx, sc, sc.me.plane, sc.me.color, 'you', sc.me.pic ?? sc.me.pilot, sc.me.id)
     drawPulse(ctx, sc)
   }
   for (const b of sc.booms) drawBoom(ctx, b)
@@ -103,7 +114,8 @@ function drawPlane(
   p: Plane,
   color: string,
   label: string,
-  pilot: string,
+  /** An emoji, a picture, or '' for an empty cockpit. */
+  pilot: string | CanvasImageSource,
   id: string,
 ) {
   const r = sc.reactions?.get(id)
@@ -133,10 +145,17 @@ function drawPlane(
     // Upright in the cockpit, whichever way the jet points.
     ctx.translate(5, 0)
     ctx.rotate(-p.a)
-    ctx.font = '13px system-ui'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(pilot, 0, 0)
+    if (typeof pilot === 'string') {
+      ctx.font = '13px system-ui'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(pilot, 0, 0)
+    } else {
+      ctx.beginPath()
+      ctx.arc(0, 0, 8, 0, Math.PI * 2)
+      ctx.clip() // a round cockpit
+      ctx.drawImage(pilot, -8, -8, 16, 16)
+    }
   }
   ctx.restore()
 }

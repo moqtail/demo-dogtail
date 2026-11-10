@@ -47,6 +47,8 @@ Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
 
 Small screens also get a minimap at the bottom centre (🗺 button or **M** to hide it).
 
+Pilot: an emoji, or 📷 your own picture (on a phone, take a photo or choose one; tap it again to change it). It is cropped and shrunk to 20×20 px, kept on the device, and sent every 3 s as raw pixels (800 bytes, one datagram), so no image decoder reads another player's bytes. Settings → Players → Show their pictures hides other players' pictures.
+
 Reactions: **1–4** or the buttons bottom right (beside FIRE on touch) pop 😂 🔥 👋 💢 over your plane, at most one a second; 😀 (top right) or **E** hides them, yours and everyone's. The kill feed (top left) shows the last few kills.
 
 Power-ups drop every 8 s and last 16 s: 🛡️ 5 s of armour (firing keeps it), ⚡ 6 s of double fire rate, ❤️ one heart (up to one over full). There is no server: every player derives the same drops from the room name and the shared clock, and only grabs are sent, so two players touching one within a network delay may both get it.

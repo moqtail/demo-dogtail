@@ -34,6 +34,9 @@ import {
   type MetaMsg,
   type Plane,
   type PowerUp,
+  PIC,
+  packPic,
+  unpackPic,
   viewScale,
   PICKUP_RADIUS,
   POWER_ICON,
@@ -196,6 +199,28 @@ const peers = new Map<string, { net: Plane; shown: Plane; seen: number }>()
 /** Explosion effects: a big one when a plane is shot down, a small one on a hit. */
 let booms: Boom[] = []
 const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, big })
+/** Picture pilots of other players: what they sent, and it drawn on a small canvas. */
+const picData = new Map<string, string>()
+const pics = new Map<string, HTMLCanvasElement>()
+function picCanvas(d: string) {
+  const c = Object.assign(document.createElement('canvas'), { width: PIC, height: PIC })
+  c.getContext('2d')!.putImageData(new ImageData(unpackPic(d)!, PIC, PIC), 0, 0)
+  return c
+}
+// Settings → Players: other players' pictures can be hidden (their plane then has an empty cockpit).
+const picsBox = document.getElementById('show-pics') as HTMLInputElement
+try {
+  picsBox.checked = localStorage.getItem('dogtail.pics') !== 'off'
+} catch {
+  // Storage blocked: shown.
+}
+picsBox.addEventListener('change', () => {
+  try {
+    localStorage.setItem('dogtail.pics', picsBox.checked ? 'on' : 'off')
+  } catch {
+    // Storage blocked: lasts until reload.
+  }
+})
 let joined = false // set once connected: before that there is no `net` to send on
 
 /** An on/off setting with a top-right button, remembered on this device; on unless turned off. */
@@ -314,7 +339,7 @@ fit()
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
 const PROFILE_KEY = 'dogtail.profile'
-let saved: { name?: string; color?: string; pilot?: string; room?: string } = {}
+let saved: { name?: string; color?: string; pilot?: string; pic?: string; room?: string } = {}
 try {
   saved = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}')
 } catch {
@@ -338,6 +363,47 @@ for (const e of PILOTS) {
   radio.checked = e === startPilot
   document.getElementById('pilots')!.append(radio)
 }
+// Picture pilot: 📷 opens the file picker (on a phone: take a photo or choose one). The picture is
+// cropped to a square, shrunk to PIC×PIC and kept on this device; tapping it again picks another.
+let myPicData = unpackPic(saved.pic) ? saved.pic : undefined
+const picRadio = Object.assign(document.createElement('input'), { type: 'radio', name: 'pilot', value: 'pic' })
+picRadio.setAttribute('aria-label', 'your picture as pilot')
+const showPicRadio = () => {
+  picRadio.dataset.e = myPicData ? '' : '📷'
+  picRadio.style.backgroundImage = myPicData ? `url(${picCanvas(myPicData).toDataURL()})` : ''
+}
+showPicRadio()
+picRadio.checked = saved.pilot === 'pic' && myPicData !== undefined
+document.getElementById('pilots')!.append(picRadio)
+const picFile = document.getElementById('pic-file') as HTMLInputElement
+let picWasChecked = false
+picRadio.addEventListener('pointerdown', () => (picWasChecked = picRadio.checked))
+picRadio.addEventListener('click', () => {
+  if (!myPicData || picWasChecked) picFile.click()
+})
+picFile.addEventListener('change', async () => {
+  const file = picFile.files?.[0]
+  picFile.value = '' // so choosing the same file again still fires
+  if (!file) return
+  const url = URL.createObjectURL(file)
+  try {
+    const img = new Image()
+    img.src = url
+    await img.decode()
+    const c = Object.assign(document.createElement('canvas'), { width: PIC, height: PIC })
+    const g = c.getContext('2d')!
+    const side = Math.min(img.naturalWidth, img.naturalHeight)
+    g.imageSmoothingQuality = 'high'
+    g.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, PIC, PIC)
+    myPicData = packPic(g.getImageData(0, 0, PIC, PIC).data)
+    picRadio.checked = true
+    showPicRadio()
+  } catch {
+    document.getElementById('notice')!.textContent = 'That picture could not be read. Try another one.'
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+})
 const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
 field('name').value = saved.name ?? ''
 // Room: the link's, else the one this device last joined, else a fresh random one, so a first game
@@ -369,9 +435,15 @@ await new Promise<void>((resolve) =>
 const room = field('room').value.trim() || defaultRoom
 const myName = field('name').value.trim().slice(0, 16)
 const myColor = (joinForm.elements.namedItem('color') as RadioNodeList).value || startColor
-const myPilot = (joinForm.elements.namedItem('pilot') as RadioNodeList).value
+const pilotChoice = (joinForm.elements.namedItem('pilot') as RadioNodeList).value
+const myPic = pilotChoice === 'pic' ? myPicData : undefined
+const myPicImg = myPic ? picCanvas(myPic) : undefined
+const myPilot = pilotChoice === 'pic' ? '' : pilotChoice // the emoji in meta; a picture goes as its own message
 try {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: myName, color: myColor, pilot: myPilot, room }))
+  localStorage.setItem(
+    PROFILE_KEY,
+    JSON.stringify({ name: myName, color: myColor, pilot: pilotChoice, pic: myPicData, room }),
+  )
 } catch {
   // Storage blocked: asked again next time.
 }
@@ -420,6 +492,10 @@ const net = await connect(
       }
       if (m.t === 'react') return void reactions.set(id, { e: m.e, at: performance.now() })
       if (m.t === 'grab') return void grabbed.add(m.k)
+      if (m.t === 'pic') {
+        if (picData.get(id) !== m.d) (picData.set(id, m.d), pics.set(id, picCanvas(m.d)))
+        return
+      }
       if (m.t === 'shot')
         bullets.push(
           ...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now(), clock.offset)),
@@ -465,6 +541,12 @@ setTimeout(() => {
 const sendMeta = () => net.sendMeta({ name: myName, color: myColor, pilot: myPilot, kills, deaths })
 sendMeta()
 setInterval(sendMeta, 2000)
+// Your picture: every 3 s, for the same reason. About 800 bytes, one datagram.
+if (myPic) {
+  const sendPic = () => net.sendEvent({ t: 'pic', d: myPic })
+  sendPic()
+  setInterval(sendPic, 3000)
+}
 
 // Scoreboard, best first. 4 Hz is plenty for text and keeps DOM work out of the frame loop.
 const scores = document.getElementById('scores')!
@@ -620,6 +702,8 @@ function frame(now: number) {
     if (now - peer.seen > 3000) {
       peers.delete(id)
       metas.delete(id)
+      picData.delete(id)
+      pics.delete(id)
       stats?.forget(id)
     } else ease(peer.shown, predict(peer.net, (now - peer.seen) / 1000), dt)
   }
@@ -639,7 +723,8 @@ function frame(now: number) {
     peers,
     metas,
     reactions: showReactions.on ? reactions : undefined,
-    me: { id: me, plane, alive, color: myColor, pilot: myPilot, spawnedAt },
+    pics: picsBox.checked ? pics : undefined,
+    me: { id: me, plane, alive, color: myColor, pilot: myPilot, pic: myPicImg, spawnedAt },
     showMap: minimap.on,
   })
 

@@ -23,6 +23,9 @@ import {
   cleanMeta,
   cleanPos,
   viewScale,
+  packPic,
+  unpackPic,
+  PIC,
   powerUpsAt,
   POWER_SLOT,
   POWER_LIFE,
@@ -221,5 +224,17 @@ describe('game rules', () => {
     expect(viewScale(0.36, 1).s).toBe(1) // a phone: full size by default
     expect(viewScale(0.36, 0.1).s).toBe(0.6) // and out only to ZOOM_BELOW
     expect(viewScale(2, 1).s).toBe(2) // a screen bigger than the arena
+  })
+
+  it('packs a picture into one datagram and back, keeping 4 bits a channel', () => {
+    const rgba = new Uint8ClampedArray(PIC * PIC * 4).map((_, i) => (i % 4 === 3 ? 255 : (i * 37) % 256))
+    const d = packPic(rgba)
+    expect(d).toHaveLength(800)
+    const back = unpackPic(d)!
+    for (let i = 0; i < rgba.length; i++) expect(back[i]).toBe(i % 4 === 3 ? 255 : (rgba[i]! >> 4) * 17)
+    expect(cleanEvent({ t: 'pic', d })).toEqual({ t: 'pic', d })
+    expect(cleanEvent({ t: 'pic', d: d.slice(1) })).toBeUndefined() // wrong size
+    expect(cleanEvent({ t: 'pic', d: '<' + d.slice(1) })).toBeUndefined() // not base64
+    expect(cleanEvent({ t: 'pic', d: 'data:image/jpeg;base64,AAAA' })).toBeUndefined()
   })
 })

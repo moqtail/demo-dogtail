@@ -48,6 +48,8 @@ export type EventMsg =
   | { t: 'kill'; by: string; n: number }
   | { t: 'react'; e: string }
   | { t: 'grab'; k: string }
+  /** Your own picture as pilot, from packPic; repeated every few seconds for players who join later. */
+  | { t: 'pic'; d: string }
 
 /** Who a player is and their score. */
 export type MetaMsg = { name: string; color: string; pilot: string; kills: number; deaths: number }
@@ -143,10 +145,45 @@ export function cleanEvent(e: unknown): EventMsg | undefined {
         : undefined
     case 'react':
       return REACTIONS.includes(m.e as string) ? { t: 'react', e: m.e as string } : undefined
+    case 'pic':
+      return unpackPic(m.d) ? { t: 'pic', d: m.d as string } : undefined
     case 'grab':
       return typeof m.k === 'string' && /^-?\d+:\d+$/.test(m.k) ? { t: 'grab', k: m.k } : undefined
   }
   return undefined
+}
+
+/**
+ * Picture pilots are PIC×PIC pixels at 4 bits a channel, base64'd: 800 characters, which fits in one
+ * datagram. Raw pixels rather than a JPEG, so no image decoder ever parses another player's bytes.
+ */
+export const PIC = 20
+const PIC_BYTES = (PIC * PIC * 3) / 2 // 12 bits a pixel
+const PIC_CHARS = (PIC_BYTES / 3) * 4
+
+/** RGBA pixels (PIC×PIC, as from getImageData) to a picture as sent. */
+export function packPic(rgba: Uint8ClampedArray): string {
+  const out = new Uint8Array(PIC_BYTES)
+  for (let px = 0, o = 0; px < PIC * PIC; px += 2, o += 3) {
+    const a = px * 4
+    const b = a + 4
+    out[o] = (rgba[a]! & 0xf0) | (rgba[a + 1]! >> 4)
+    out[o + 1] = (rgba[a + 2]! & 0xf0) | (rgba[b]! >> 4)
+    out[o + 2] = (rgba[b + 1]! & 0xf0) | (rgba[b + 2]! >> 4)
+  }
+  return btoa(String.fromCharCode(...out))
+}
+
+/** A picture as sent back to RGBA pixels, or undefined if it isn't one. */
+export function unpackPic(d: unknown): Uint8ClampedArray<ArrayBuffer> | undefined {
+  if (typeof d !== 'string' || d.length !== PIC_CHARS || !/^[A-Za-z0-9+/]+$/.test(d)) return undefined
+  const bin = atob(d)
+  const rgba = new Uint8ClampedArray(PIC * PIC * 4)
+  for (let o = 0, px = 0; o < PIC_BYTES; o += 3, px += 2) {
+    const n = [0, 1, 2].flatMap((i) => [bin.charCodeAt(o + i) >> 4, bin.charCodeAt(o + i) & 15])
+    rgba.set([n[0]! * 17, n[1]! * 17, n[2]! * 17, 255, n[3]! * 17, n[4]! * 17, n[5]! * 17, 255], px * 4)
+  }
+  return rgba
 }
 
 export const ZOOM_BELOW = 0.6 // canvas px per arena unit under which planes get too small to play
