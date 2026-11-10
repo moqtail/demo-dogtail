@@ -35,6 +35,7 @@ import {
   type MetaMsg,
   type Plane,
 } from './game'
+import { startAnalytics } from './analytics'
 import { connect, syncClock } from './net'
 import { watchStats } from './netstats'
 import { play, setSound, soundOn, type SoundName } from './sound'
@@ -214,6 +215,8 @@ joinForm.hidden = true
 const leave = document.getElementById('leave')!
 leave.hidden = false
 leave.addEventListener('click', () => location.reload())
+const analytics = startAnalytics(me)
+const joinedAt = Date.now()
 hud.textContent = 'Connecting…'
 
 // Network stats panel: ?debug, the S key or Settings → Network.
@@ -271,13 +274,21 @@ const net = await connect(
 
 stats?.setRtt(net.joinRtt)
 
+const device = matchMedia('(pointer: coarse)').matches ? 'touch' : 'desktop'
+analytics.track('join', { room, device })
+// Leaving: closing the tab, Leave (which reloads) or switching away on a phone all fire pagehide.
+addEventListener('pagehide', () =>
+  analytics.track('leave', { room, seconds: Math.round((Date.now() - joinedAt) / 1000), kills, deaths }),
+)
+setInterval(() => analytics.track('room_size', { room, players: peers.size + 1 }), 60_000)
 spawnedAt = performance.now() // the first pulse plays once you're in, not behind the join screen
 
 // A room holds ROOM_CAP players. Once the others have shown up (pos is 10 Hz), a newcomer to a full
 // room goes back to the join screen with a fresh room. Only newcomers check, so nobody is kicked;
 // two joining at once may both stay, which is fine.
 setTimeout(() => {
-  if (peers.size + 1 > ROOM_CAP) location.replace(`?room=${randomRoom()}&full=${encodeURIComponent(room)}`)
+  if (peers.size + 1 > ROOM_CAP)
+    (analytics.track('room_full', { room }), location.replace(`?room=${randomRoom()}&full=${encodeURIComponent(room)}`))
 }, 1500)
 
 // Screens big enough show the whole arena. On a phone that would shrink a plane to a few pixels, so

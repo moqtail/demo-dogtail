@@ -78,6 +78,10 @@ All objects travel as **datagrams**; the tracks are still announced with `PUBLIS
 3. **Game shell**: join screen with name and color, rooms by link, scoreboard, `meta` track.
 4. **Extras, if they turn out to matter:** datagrams for `pos`, mobile controls, sound.
 
+## Analytics
+
+PostHog (`src/analytics.ts`) gets `join` (room, touch or desktop), `leave` (session seconds, kills, deaths), `room_full` and a once-a-minute `room_size`. It is cookieless, keyed by the random player id (names are not sent), loads after joining, and is off on localhost and LAN addresses so dev and bot runs don't count.
+
 ## Load test
 
 `bots.html` (dev server only, not deployed) runs bots that each join as a full player on their own connection: pos at 10 Hz, meta every 2 s, about one shot a second, and their own hit detection, so you can shoot them down. Run them in headless Chrome, which doesn't throttle them like a background tab would:
