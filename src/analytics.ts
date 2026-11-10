@@ -27,7 +27,7 @@ export function startAnalytics(player: string) {
   const ready = enabled
     ? import('posthog-js').then(({ default: posthog }) => {
         posthog.init('phc_xTQg4iNbCIrPiQVyr4CFjsaC0fWAo2rfNs5xeyu1GTG', {
-          api_host: 'https://us.i.posthog.com',
+          api_host: 'https://eu.i.posthog.com',
           persistence: 'memory', // cookieless
           autocapture: false,
           capture_pageview: false,
