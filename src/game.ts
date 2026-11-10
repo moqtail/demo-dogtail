@@ -65,8 +65,11 @@ export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
 
 export const wrap = (v: number, max: number) => ((v % max) + max) % max
 
-export function spawn(): Plane {
-  return { x: Math.random() * W, y: Math.random() * H, a: Math.random() * Math.PI * 2, hp: MAX_HP }
+/** Health for a room of `players`: MAX_HP up to 10, one more for every 10 beyond, as busy rooms mean more fire. */
+export const maxHpFor = (players: number) => MAX_HP + Math.floor(Math.max(players - 1, 0) / 10)
+
+export function spawn(hp = MAX_HP): Plane {
+  return { x: Math.random() * W, y: Math.random() * H, a: Math.random() * Math.PI * 2, hp }
 }
 
 /** Heading `a` turned toward `target` by at most TURN * dt, the short way round. */

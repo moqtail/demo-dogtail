@@ -22,7 +22,7 @@
 
 import {
   COLORS,
-  MAX_HP,
+  maxHpFor,
   SPAWN_SHIELD,
   findHit,
   shotLag,
@@ -41,6 +41,7 @@ const clock = syncClock()
 const stamp = () => (clock.offset === undefined ? undefined : Date.now() + clock.offset)
 let connected = 0
 let failed = 0
+let lastError = ''
 let received = 0
 
 async function bot(i: number, relay: string) {
@@ -50,8 +51,12 @@ async function bot(i: number, relay: string) {
   let shield = SPAWN_SHIELD
   let deaths = 0
   let turn = 0
+  const seen = new Map<string, number>() // other players, by last pos, for the room's size
   const net = await connect(relay, room, me, '', {
-    onPos: () => void received++,
+    onPos: (id) => {
+      received++
+      seen.set(id, Date.now())
+    },
     onMeta: () => void received++,
     onEvent: (id, m) => {
       received++
@@ -78,20 +83,30 @@ async function bot(i: number, relay: string) {
       if (--plane.hp <= 0) {
         deaths++
         for (let k = 0; k < 3; k++) net.sendEvent({ t: 'kill', by, n: deaths })
-        plane = spawn()
+        const now = Date.now()
+        for (const [id, t] of seen) if (now - t > 3000) seen.delete(id)
+        plane = spawn(maxHpFor(seen.size + 1))
         shield = SPAWN_SHIELD
         meta()
       }
     }
     if (Math.random() < 0.1) net.sendEvent({ t: 'shot', x: plane.x, y: plane.y, a: plane.a, ts: stamp() })
-    net.sendPos({ ...plane, hp: Math.min(plane.hp, MAX_HP), ts: stamp() })
+    net.sendPos({ ...plane, ts: stamp() })
   }, 100)
 }
 
 onmessage = (e: MessageEvent<{ room: string; n: number; relay: string }>) => {
   room = e.data.room
   // Staggered joins, 5 a second, so the relay isn't hit by every PUBLISH at once.
-  for (let i = 1; i <= e.data.n; i++) setTimeout(() => bot(i, e.data.relay).catch(() => void failed++), i * 200)
+  for (let i = 1; i <= e.data.n; i++)
+    setTimeout(
+      () =>
+        bot(i, e.data.relay).catch((err) => {
+          failed++
+          lastError = String(err)
+        }),
+      i * 200,
+    )
 }
 
-setInterval(() => postMessage({ connected, failed, received }), 1000)
+setInterval(() => postMessage({ connected, failed, received, lastError }), 1000)

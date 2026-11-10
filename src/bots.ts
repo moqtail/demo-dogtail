@@ -25,11 +25,11 @@ else {
   const worker = new Worker(new URL('./bots-worker.ts', import.meta.url), { type: 'module' })
   worker.postMessage({ room, n, relay: params.get('relay') ?? 'moqt://relay.moqtail.dev' })
   let last = 0
-  worker.onmessage = (e: MessageEvent<{ connected: number; failed: number; received: number }>) => {
-    const { connected, failed, received } = e.data
+  worker.onmessage = (e: MessageEvent<{ connected: number; failed: number; received: number; lastError: string }>) => {
+    const { connected, failed, received, lastError } = e.data
     out.textContent =
       `room ${room} · bots ${connected}/${n} connected` +
-      (failed ? ` · ${failed} failed` : '') +
+      (failed ? ` · ${failed} failed (${lastError})` : '') +
       ` · received ${received - last} obj/s in total (${connected ? Math.round((received - last) / connected) : 0} per bot)`
     last = received
   }

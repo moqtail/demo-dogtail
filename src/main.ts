@@ -18,7 +18,7 @@ import {
   COLORS,
   FIRE_COOLDOWN,
   H,
-  MAX_HP,
+  maxHpFor,
   RESPAWN_DELAY,
   SPAWN_SHIELD,
   W,
@@ -432,7 +432,7 @@ function frame(now: number) {
   last = now
 
   if (deadFor > 0 && (deadFor -= dt) <= 0) {
-    plane = spawn()
+    plane = spawn(maxHpFor(peers.size + 1)) // health follows the room's size at each spawn
     shieldFor = SPAWN_SHIELD
   }
   const alive = deadFor <= 0
@@ -518,7 +518,9 @@ function frame(now: number) {
     }
   if (zoomed) drawArrows()
 
-  const status = alive ? `HP ${plane.hp}/${MAX_HP}` : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
+  const status = alive
+    ? `HP ${plane.hp}/${maxHpFor(peers.size + 1)}`
+    : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
   hud.textContent = `room ${room} · ${status} · players ${peers.size + 1}`
   requestAnimationFrame(frame)
 }

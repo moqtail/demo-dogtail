@@ -37,7 +37,7 @@ Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: t
 
 On small screens (phones), where the whole arena would shrink planes to a few pixels, the view zooms to full size and follows your plane; arrows at the screen edge point to players out of view. Computers and tablets show the whole arena.
 
-The scoreboard (top right) shows the top 10 by kills / deaths, plus your own rank if you are further down. A room holds 50 players; joining a full one sends you back to the join screen with a fresh room.
+The scoreboard (top right) shows the top 10 by kills / deaths, plus your own rank if you are further down. Planes have 3 hearts in a room of up to 10, and one more for every 10 players beyond that (7 at 50), as busier rooms mean more fire; the number is set at each spawn. A room holds 50 players; joining a full one sends you back to the join screen with a fresh room.
 
 **Leave** (top right) goes back to the join screen to change room, name or color; on the iPhone Home Screen app there is no back button otherwise.
 

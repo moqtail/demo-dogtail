@@ -27,6 +27,7 @@ import {
   ClockSync,
   clockSample,
   edgePoint,
+  maxHpFor,
   predict,
   shotLag,
   stepBullets,
@@ -137,6 +138,10 @@ describe('game rules', () => {
     const p = edgePoint(-300, 300, 100, 50, 5)!
     expect(p.y).toBeCloseTo(45) // the nearer edge (top/bottom) clamps first
     expect(p.x).toBeCloseTo(-45)
+  })
+
+  it('gives one more life for every 10 players beyond 10', () => {
+    expect([1, 10, 11, 20, 21, 50].map(maxHpFor)).toEqual([3, 3, 4, 4, 5, 7])
   })
 
   it('round-trips wire messages', () => {
