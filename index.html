@@ -225,6 +225,16 @@
         background-size: cover;
         image-rendering: pixelated;
       }
+      #relay-box summary {
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      #relay-box input {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 6px;
+      }
       #notice {
         margin: 0;
         color: #fbbf24;
@@ -395,6 +405,18 @@
       <fieldset id="pilots"><legend>Pilot</legend></fieldset>
       <input type="file" id="pic-file" accept="image/*" hidden />
       <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
+      <details id="relay-box">
+        <summary>Relay</summary>
+        <input
+          type="text"
+          name="relay"
+          aria-label="Relay URL"
+          autocapitalize="off"
+          spellcheck="false"
+          pattern="(moqt|https)://.+"
+          title="A relay URL, such as moqt://relay.n1.fra.moqtail.dev"
+        />
+      </details>
       <p id="notice"></p>
       <p id="invite"></p>
       <button>Join</button>

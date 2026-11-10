@@ -2,7 +2,7 @@
 
 A multiplayer top-down plane shooter that runs entirely over a MOQtail relay. There is no game server.
 
-Play at **https://dogtail.zafergurel.com**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.moqtail.dev`; nothing to install, and phones and tablets get on-screen buttons.
+Play at **https://dogtail.zafergurel.com**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.n1.fra.moqtail.dev` by default (the join screen's **Relay** field, or `?relay=` in the link, picks another; invite links carry it); nothing to install, and phones and tablets get on-screen buttons.
 
 Built with [MOQtail](https://github.com/moqtail/moqtail), a Media over QUIC (MoQ) library and relay.
 
@@ -10,7 +10,7 @@ Built with [MOQtail](https://github.com/moqtail/moqtail), a Media over QUIC (MoQ
 
 ```bash
 npm install
-npm run dev        # http://localhost:5174, uses relay.moqtail.dev
+npm run dev        # http://localhost:5174, uses relay.n1.fra.moqtail.dev
 npm test
 npm run build      # static site in dist/
 npm run deploy     # build and upload to Cloudflare Workers (dogtail.zafergurel.com), see wrangler.jsonc

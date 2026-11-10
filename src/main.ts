@@ -54,7 +54,8 @@ declare const __CERT_HASH__: string // injected by vite.config.ts
 
 const params = new URLSearchParams(location.search)
 // With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
-const relay = params.get('relay') ?? (__CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.moqtail.dev')
+// The join screen can change it (see the Relay field).
+const DEFAULT_RELAY = __CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.n1.fra.moqtail.dev'
 const me = Math.random().toString(16).slice(2, 8)
 const analytics = startAnalytics(me) // at page load, so visits that never join count too
 const debug = params.has('debug') // ?debug: network stats shown from the start
@@ -339,7 +340,7 @@ fit()
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
 const PROFILE_KEY = 'dogtail.profile'
-let saved: { name?: string; color?: string; pilot?: string; pic?: string; room?: string } = {}
+let saved: { name?: string; color?: string; pilot?: string; pic?: string; room?: string; relay?: string } = {}
 try {
   saved = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}')
 } catch {
@@ -413,9 +414,17 @@ const BIRDS = ['falcon', 'hawk', 'eagle', 'raven', 'kestrel', 'osprey', 'condor'
 const randomRoom = () => `${BIRDS[Math.floor(Math.random() * BIRDS.length)]}-${100 + Math.floor(Math.random() * 900)}`
 const defaultRoom = typeof saved.room === 'string' && saved.room.trim() ? saved.room.trim() : randomRoom()
 field('room').value = params.get('room') ?? defaultRoom
+// Relay: the link's, else the one this device last used, else the default. Shown folded unless changed.
+const relayValue = () => field('relay').value.trim() || DEFAULT_RELAY
+field('relay').value = params.get('relay') ?? saved.relay ?? DEFAULT_RELAY
+field('relay').placeholder = DEFAULT_RELAY
+;(document.getElementById('relay-box') as HTMLDetailsElement).open = relayValue() !== DEFAULT_RELAY
+// The invite link carries the room, and the relay when it isn't the default, so friends land together.
 const roomUrl = () => {
   const u = new URL(location.href)
   u.searchParams.set('room', field('room').value.trim() || defaultRoom)
+  if (relayValue() === DEFAULT_RELAY) u.searchParams.delete('relay')
+  else u.searchParams.set('relay', relayValue())
   u.searchParams.delete('full')
   return u.href
 }
@@ -424,6 +433,7 @@ const fullRoom = params.get('full')
 if (fullRoom)
   document.getElementById('notice')!.textContent = `Room ${fullRoom} is full (${ROOM_CAP} players). Here is a new one.`
 field('room').addEventListener('input', showInvite)
+field('relay').addEventListener('input', showInvite)
 showInvite()
 hud.textContent = ''
 await new Promise<void>((resolve) =>
@@ -433,6 +443,7 @@ await new Promise<void>((resolve) =>
   }),
 )
 const room = field('room').value.trim() || defaultRoom
+const relay = relayValue()
 const myName = field('name').value.trim().slice(0, 16)
 const myColor = (joinForm.elements.namedItem('color') as RadioNodeList).value || startColor
 const pilotChoice = (joinForm.elements.namedItem('pilot') as RadioNodeList).value
@@ -442,7 +453,14 @@ const myPilot = pilotChoice === 'pic' ? '' : pilotChoice // the emoji in meta; a
 try {
   localStorage.setItem(
     PROFILE_KEY,
-    JSON.stringify({ name: myName, color: myColor, pilot: pilotChoice, pic: myPicData, room }),
+    JSON.stringify({
+      name: myName,
+      color: myColor,
+      pilot: pilotChoice,
+      pic: myPicData,
+      room,
+      relay: relay === DEFAULT_RELAY ? undefined : relay,
+    }),
   )
 } catch {
   // Storage blocked: asked again next time.
