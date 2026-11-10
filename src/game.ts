@@ -68,8 +68,20 @@ export const wrap = (v: number, max: number) => ((v % max) + max) % max
 /** Health for a room of `players`: MAX_HP up to 10, one more for every 10 beyond, as busy rooms mean more fire. */
 export const maxHpFor = (players: number) => MAX_HP + Math.floor(Math.max(players - 1, 0) / 10)
 
-export function spawn(hp = MAX_HP): Plane {
-  return { x: Math.random() * W, y: Math.random() * H, a: Math.random() * Math.PI * 2, hp }
+/**
+ * A fresh plane. With `others` (live planes), it takes the farthest from them of 12 random spots, so
+ * a respawn in a crowded room doesn't land in the middle of a fight.
+ */
+export function spawn(hp = MAX_HP, others: { x: number; y: number }[] = []): Plane {
+  const spot = () => ({ x: Math.random() * W, y: Math.random() * H })
+  let best = spot()
+  let bestGap = -1
+  for (let i = 0; others.length && i < 12; i++) {
+    const c = spot()
+    const gap = Math.min(...others.map((o) => wrapDist(c.x, c.y, o.x, o.y)))
+    if (gap > bestGap) [best, bestGap] = [c, gap]
+  }
+  return { ...best, a: Math.random() * Math.PI * 2, hp }
 }
 
 /** Heading `a` turned toward `target` by at most TURN * dt, the short way round. */

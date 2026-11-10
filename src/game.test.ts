@@ -29,6 +29,7 @@ import {
   edgePoint,
   maxHpFor,
   predict,
+  spawn,
   shotLag,
   stepBullets,
   stepPlane,
@@ -142,6 +143,19 @@ describe('game rules', () => {
 
   it('gives one more life for every 10 players beyond 10', () => {
     expect([1, 10, 11, 20, 21, 50].map(maxHpFor)).toEqual([3, 3, 4, 4, 5, 7])
+  })
+
+  it('spawns away from other planes', () => {
+    const crowd = [
+      { x: 100, y: 100 },
+      { x: 140, y: 90 },
+      { x: 80, y: 130 },
+    ]
+    for (let i = 0; i < 20; i++) {
+      const p = spawn(3, crowd)
+      // 12 tries all landing within 200 of the crowd is vanishingly unlikely (each ~8%).
+      expect(Math.min(...crowd.map((o) => wrapDist(p.x, p.y, o.x, o.y)))).toBeGreaterThan(200)
+    }
   })
 
   it('round-trips wire messages', () => {

@@ -136,6 +136,7 @@ for (const btn of document.querySelectorAll<HTMLElement>('#touch [data-key]')) {
 }
 
 let plane: Plane = spawn()
+let spawnedAt = performance.now() // for the you-are-here pulse
 let shieldFor = SPAWN_SHIELD
 let bullets: Bullet[] = []
 let cooldown = 0
@@ -270,6 +271,8 @@ const net = await connect(
 
 stats?.setRtt(net.joinRtt)
 
+spawnedAt = performance.now() // the first pulse plays once you're in, not behind the join screen
+
 // A room holds ROOM_CAP players. Once the others have shown up (pos is 10 Hz), a newcomer to a full
 // room goes back to the join screen with a fresh room. Only newcomers check, so nobody is kicked;
 // two joining at once may both stay, which is fine.
@@ -326,8 +329,30 @@ function drawScene() {
     const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
     if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label)
   }
-  if (deadFor <= 0) drawPlane(plane, myColor, 'you')
+  if (deadFor <= 0) {
+    drawPlane(plane, myColor, 'you')
+    drawPulse()
+  }
   for (const b of booms) drawBoom(b)
+}
+
+/**
+ * For 2 s after you appear, rings in your color shrink onto your plane, so you can find yourself in a
+ * crowd. Only you see them.
+ */
+function drawPulse() {
+  const t = (performance.now() - spawnedAt) / 2000
+  if (t >= 1) return
+  ctx.strokeStyle = myColor
+  ctx.lineWidth = 3 / view.s
+  for (const phase of [0, 0.5]) {
+    const k = (t * 2 + phase) % 1 // two rings, half a cycle apart
+    ctx.globalAlpha = (1 - t) * k
+    ctx.beginPath()
+    ctx.arc(plane.x, plane.y, 20 + 100 * (1 - k), 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
 }
 
 /** Zoomed in: a small arrow at the screen edge toward each player out of view, in their color. */
@@ -432,7 +457,9 @@ function frame(now: number) {
   last = now
 
   if (deadFor > 0 && (deadFor -= dt) <= 0) {
-    plane = spawn(maxHpFor(peers.size + 1)) // health follows the room's size at each spawn
+    const live = [...peers.values()].map((p) => p.shown).filter((p) => p.hp > 0)
+    plane = spawn(maxHpFor(peers.size + 1), live) // health follows the room's size; spot away from others
+    spawnedAt = now
     shieldFor = SPAWN_SHIELD
   }
   const alive = deadFor <= 0
