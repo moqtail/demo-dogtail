@@ -198,8 +198,7 @@ const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, bi
 // Join screen: name, color and room, remembered on this device. The room goes into the URL so the
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
-// Storage keys keep the game's old name, so saved profiles and settings survive the rename.
-const PROFILE_KEY = 'dogfight.profile'
+const PROFILE_KEY = 'dogtail.profile'
 let saved: { name?: string; color?: string; pilot?: string; room?: string } = {}
 try {
   saved = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}')
@@ -367,7 +366,7 @@ function fit() {
 }
 // Minimap (zoomed only): the whole arena in a corner, on by default, toggled with 🗺 or M and
 // remembered on this device.
-const MAP_KEY = 'dogfight.map'
+const MAP_KEY = 'dogtail.map'
 let mapOn = true
 try {
   mapOn = localStorage.getItem(MAP_KEY) !== 'off'
@@ -391,7 +390,7 @@ function toggleMap() {
 mapButton.setAttribute('aria-pressed', String(mapOn))
 
 // Reactions: 😀 or E hides the buttons and everyone's reactions, remembered on this device.
-const REACT_KEY = 'dogfight.reactions'
+const REACT_KEY = 'dogtail.reactions'
 let reactOn = true
 try {
   reactOn = localStorage.getItem(REACT_KEY) !== 'off'

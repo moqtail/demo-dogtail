@@ -39,7 +39,7 @@ export type SoundName = 'fire' | 'hit' | 'death'
 
 /** Which sounds are on, remembered per browser. */
 export const soundOn: Record<SoundName, boolean> = { fire: true, hit: true, death: true }
-const STORAGE_KEY = 'dogfight.sounds'
+const STORAGE_KEY = 'dogtail.sounds'
 try {
   Object.assign(soundOn, JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'))
 } catch {
