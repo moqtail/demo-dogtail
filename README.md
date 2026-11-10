@@ -2,34 +2,34 @@
 
 A multiplayer top-down plane shooter that runs entirely over a MOQtail relay. There is no game server.
 
-Play at **https://dogtail.zafergurel.com**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.n1.fra.moqtail.dev` by default (the join screen's **Relay** field, or `?relay=` in the link, picks another; invite links carry it); nothing to install, and phones and tablets get on-screen buttons.
+Play at **https://dogtail.moqtail.dev**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.n1.fra.moqtail.dev` by default (the join screen's **Relay** field, or `?relay=` in the link, picks another; invite links carry it); nothing to install, and phones and tablets get on-screen buttons.
 
 Built with [MOQtail](https://github.com/moqtail/moqtail), a Media over QUIC (MoQ) library and relay.
 
 ## Develop
 
+Develop against a MOQtail relay on your own machine: you see your own relay's logs, nothing you test reaches players on the public relay, and phones and tablets on your network can join too.
+
 ```bash
 npm install
-npm run dev        # http://localhost:5174, uses relay.n1.fra.moqtail.dev
-npm test
-npm run build      # static site in dist/
-npm run deploy     # build and upload to Cloudflare Workers (dogtail.zafergurel.com), see wrangler.jsonc
-```
-
-Query params: `?room=<name>` (default: the room this device last joined, or a random one like `falcon-482` on a first visit), `?relay=<moqt:// or https:// url>`, `?debug` (opens the network stats panel).
-
-### LAN play with your own relay
-
-To play on a local network without the public relay, run the MOQtail relay on this machine with a self-signed certificate that devices trust by hash:
-
-```bash
 scripts/make-cert.sh   # cert for this machine's LAN IP, valid 13 days
 # in a moqtail checkout:
 cargo run -p relay -- --port 4433 --cert-file <dogtail>/cert/cert.pem --key-file <dogtail>/cert/key.pem
-npm run dev            # now https, and the page uses the relay on this machine
+npm run dev            # https://localhost:5174, using the relay on this machine
+npm test
 ```
 
-Every player opens `https://<your-ip>:5174` and clicks through the certificate warning once (Advanced → Proceed). Vite puts the certificate's SHA-256 hash into the page, which passes it to WebTransport as `serverCertificateHashes`. Browsers accept that only for ECDSA certificates valid for 14 days or less, so rerun `make-cert.sh` when it expires and restart the relay and Vite. Safari needs iOS/macOS 26.4 or later.
+On other devices, open `https://<your-ip>:5174` and click through the certificate warning once (Advanced → Proceed). Vite puts the certificate's SHA-256 hash into the page, which passes it to WebTransport as `serverCertificateHashes`, so no CA needs installing. Browsers accept that only for ECDSA certificates valid for 14 days or less: rerun `make-cert.sh` when it expires and restart the relay and Vite. Safari needs iOS/macOS 26.4 or later.
+
+Without a certificate in `cert/`, `npm run dev` serves plain http and uses the public relay `relay.n1.fra.moqtail.dev`, which is fine for a quick look.
+
+```bash
+npm run build      # static site in dist/
+npm run deploy     # build and upload to Cloudflare Workers (dogtail.moqtail.dev), see wrangler.jsonc
+npm run deploy:zafergurel  # the same build on dogtail.zafergurel.com, a separate Worker
+```
+
+Query params: `?room=<name>` (default: the room this device last joined, or a random one like `falcon-482` on a first visit), `?relay=<moqt:// or https:// url>`, `?debug` (opens the network stats panel).
 
 ## Controls
 

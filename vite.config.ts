@@ -29,11 +29,13 @@ const certHash = hasCert
       .digest('hex')
   : ''
 
-export default defineConfig({
-  define: { __CERT_HASH__: JSON.stringify(certHash) },
+// Only the dev server uses it: a build for the public site must use the public relay, even when a
+// LAN cert is lying around from local development.
+export default defineConfig(({ command }) => ({
+  define: { __CERT_HASH__: JSON.stringify(command === 'serve' ? certHash : '') },
   server: {
     port: 5174,
     host: true,
     https: hasCert ? { cert: readFileSync(certFile), key: readFileSync(keyFile) } : undefined,
   },
-})
+}))

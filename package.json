@@ -9,6 +9,7 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "deploy": "npm run build && npx wrangler@4 deploy",
+    "deploy:zafergurel": "npm run build && npx wrangler@4 deploy --env zafergurel",
     "bots": "node scripts/bots.mjs"
   },
   "devDependencies": {

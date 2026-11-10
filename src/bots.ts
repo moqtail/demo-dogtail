@@ -16,6 +16,7 @@
 
 /** Load-test page: runs the bots in a worker (bots-worker.ts) and shows what they see. */
 
+declare const __CERT_HASH__: string // injected by vite.config.ts
 const params = new URLSearchParams(location.search)
 const room = params.get('room')
 const n = Math.min(Number(params.get('n') ?? 10), 100)
@@ -23,7 +24,10 @@ const out = document.getElementById('out')!
 if (!room) out.textContent = 'Add ?room=<room>&n=<count> to the URL.'
 else {
   const worker = new Worker(new URL('./bots-worker.ts', import.meta.url), { type: 'module' })
-  worker.postMessage({ room, n, relay: params.get('relay') ?? 'moqt://relay.n1.fra.moqtail.dev' })
+  // Same relay as the game: the one on this machine when there is a LAN cert, else the public one.
+  const relay =
+    params.get('relay') ?? (__CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.n1.fra.moqtail.dev')
+  worker.postMessage({ room, n, relay, certHash: __CERT_HASH__ })
   let last = 0
   worker.onmessage = (e: MessageEvent<{ connected: number; failed: number; received: number; lastError: string }>) => {
     const { connected, failed, received, lastError } = e.data
