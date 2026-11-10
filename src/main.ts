@@ -16,6 +16,7 @@
 
 import {
   COLORS,
+  PILOTS,
   FIRE_COOLDOWN,
   H,
   maxHpFor,
@@ -159,7 +160,7 @@ const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, bi
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
 const PROFILE_KEY = 'dogfight.profile'
-let saved: { name?: string; color?: string; room?: string } = {}
+let saved: { name?: string; color?: string; pilot?: string; room?: string } = {}
 try {
   saved = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}')
 } catch {
@@ -172,6 +173,16 @@ for (const c of COLORS) {
   radio.setAttribute('aria-label', `color ${COLORS.indexOf(c) + 1}`)
   radio.checked = c === startColor
   document.getElementById('colors')!.append(radio)
+}
+const startPilot = PILOTS.includes(saved.pilot!)
+  ? saved.pilot!
+  : PILOTS[1 + Math.floor(Math.random() * (PILOTS.length - 1))]!
+for (const e of PILOTS) {
+  const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'pilot', value: e })
+  radio.dataset.e = e || '✈'
+  radio.setAttribute('aria-label', e ? `pilot ${e}` : 'no pilot')
+  radio.checked = e === startPilot
+  document.getElementById('pilots')!.append(radio)
 }
 const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
 field('name').value = saved.name ?? ''
@@ -204,8 +215,9 @@ await new Promise<void>((resolve) =>
 const room = field('room').value.trim() || defaultRoom
 const myName = field('name').value.trim().slice(0, 16)
 const myColor = (joinForm.elements.namedItem('color') as RadioNodeList).value || startColor
+const myPilot = (joinForm.elements.namedItem('pilot') as RadioNodeList).value
 try {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: myName, color: myColor, room }))
+  localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: myName, color: myColor, pilot: myPilot, room }))
 } catch {
   // Storage blocked: asked again next time.
 }
@@ -306,7 +318,22 @@ function fit() {
 addEventListener('resize', fit)
 fit()
 
-function drawPlane(p: Plane, color: string, label: string) {
+// A jet, nose along +x: swept wings and twin tail fins, mirrored about the fuselage.
+const JET_TOP = [
+  [18, 0],
+  [8, -2.5],
+  [0, -3],
+  [-6, -13],
+  [-10, -13],
+  [-7, -3],
+  [-12, -3],
+  [-15, -8],
+  [-17, -8],
+  [-16, -2],
+]
+const JET = [...JET_TOP, ...JET_TOP.map(([x, y]) => [x!, -y!]).reverse()]
+
+function drawPlane(p: Plane, color: string, label: string, pilot: string) {
   ctx.save()
   if (p.away)
     ctx.globalAlpha = 0.3 // its player is in another tab
@@ -317,11 +344,17 @@ function drawPlane(p: Plane, color: string, label: string) {
   ctx.rotate(p.a)
   ctx.fillStyle = color
   ctx.beginPath()
-  ctx.moveTo(16, 0)
-  ctx.lineTo(-10, -10)
-  ctx.lineTo(-5, 0)
-  ctx.lineTo(-10, 10)
+  for (const [x, y] of JET) ctx.lineTo(x!, y!)
   ctx.fill()
+  if (pilot) {
+    // Upright in the cockpit, whichever way the jet points.
+    ctx.translate(5, 0)
+    ctx.rotate(-p.a)
+    ctx.font = '13px system-ui'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(pilot, 0, 0)
+  }
   ctx.restore()
 }
 
@@ -338,10 +371,10 @@ function drawScene() {
   for (const [id, peer] of peers) {
     const m = metas.get(id)
     const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
-    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label)
+    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label, m?.pilot ?? '')
   }
   if (deadFor <= 0) {
-    drawPlane(plane, myColor, 'you')
+    drawPlane(plane, myColor, 'you', myPilot)
     drawPulse()
   }
   for (const b of booms) drawBoom(b)
@@ -409,7 +442,7 @@ function drawBoom(b: { x: number; y: number; age: number; big: boolean }) {
 
 // Meta goes out on join, on every score change and every 2 s: the repeats reach players who join
 // later without relying on the relay to replay an old group.
-const sendMeta = () => net.sendMeta({ name: myName, color: myColor, kills, deaths })
+const sendMeta = () => net.sendMeta({ name: myName, color: myColor, pilot: myPilot, kills, deaths })
 sendMeta()
 setInterval(sendMeta, 2000)
 
@@ -419,7 +452,7 @@ setInterval(() => {
   const all = [
     { name: `${myName} (you)`, color: myColor, kills, deaths, you: true },
     ...[...peers.keys()].map((id) => ({
-      ...(metas.get(id) ?? { name: id, color: '#9ca3af', kills: 0, deaths: 0 }),
+      ...(metas.get(id) ?? { name: id, color: '#9ca3af', pilot: '', kills: 0, deaths: 0 }),
       you: false,
     })),
   ].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)

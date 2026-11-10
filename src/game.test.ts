@@ -99,13 +99,17 @@ describe('game rules', () => {
   })
 
   it('cleans peer meta before it is shown', () => {
-    expect(cleanMeta({ name: '  a very long name indeed  ', color: 'url(x)', kills: -1, deaths: 2 })).toEqual({
+    expect(
+      cleanMeta({ name: '  a very long name indeed  ', color: 'url(x)', pilot: '<img>', kills: -1, deaths: 2 }),
+    ).toEqual({
       name: 'a very long name',
       color: '#9ca3af',
+      pilot: '',
       kills: 0,
       deaths: 2,
     })
     expect(cleanMeta({}).name).toBe('?')
+    expect(cleanMeta({ pilot: '🦆' }).pilot).toBe('🦆')
   })
 
   it('works out a clock offset from one exchange', () => {

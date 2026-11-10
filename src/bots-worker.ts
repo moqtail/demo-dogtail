@@ -22,6 +22,7 @@
 
 import {
   COLORS,
+  PILOTS,
   maxHpFor,
   SPAWN_SHIELD,
   findHit,
@@ -65,7 +66,14 @@ async function bot(i: number, relay: string) {
     },
   })
   connected++
-  const meta = () => net.sendMeta({ name: `bot-${i}`, color: COLORS[i % COLORS.length]!, kills: 0, deaths })
+  const meta = () =>
+    net.sendMeta({
+      name: `bot-${i}`,
+      color: COLORS[i % COLORS.length]!,
+      pilot: PILOTS[i % PILOTS.length]!,
+      kills: 0,
+      deaths,
+    })
   meta()
   setInterval(meta, 2000)
   setInterval(() => {

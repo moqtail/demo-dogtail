@@ -165,7 +165,8 @@
         -webkit-user-select: text;
         user-select: text;
       }
-      #colors {
+      #colors,
+      #pilots {
         border: 0;
         padding: 0;
         margin: 0;
@@ -173,12 +174,14 @@
         flex-wrap: nowrap; /* one row: 8 × 28px + gaps fit the form even on a phone */
         gap: 6px;
       }
-      #colors legend {
+      #colors legend,
+      #pilots legend {
         color: #9ca3af;
         padding: 0;
         margin-bottom: 4px;
       }
-      #colors input {
+      #colors input,
+      #pilots input {
         appearance: none;
         flex: none;
         box-sizing: border-box;
@@ -190,12 +193,23 @@
         border: 3px solid transparent;
         cursor: pointer;
       }
-      #colors input:checked {
+      #colors input:checked,
+      #pilots input:checked {
         border-color: #f9fafb;
       }
-      #colors input:focus-visible {
+      #colors input:focus-visible,
+      #pilots input:focus-visible {
         outline: 2px solid #f9fafb;
         outline-offset: 2px;
+      }
+      #pilots input {
+        background: #1f2937;
+        display: grid;
+        place-content: center;
+        font-size: 18px;
+      }
+      #pilots input::before {
+        content: attr(data-e);
       }
       #notice {
         margin: 0;
@@ -300,6 +314,7 @@
       <h1>Dogfight</h1>
       <label>Your name <input type="text" name="name" maxlength="16" required autocomplete="nickname" /></label>
       <fieldset id="colors"><legend>Color</legend></fieldset>
+      <fieldset id="pilots"><legend>Pilot</legend></fieldset>
       <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
       <p id="notice"></p>
       <p id="invite"></p>

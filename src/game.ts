@@ -48,16 +48,19 @@ export type EventMsg =
   | { t: 'kill'; by: string; n: number }
 
 /** Who a player is and their score. */
-export type MetaMsg = { name: string; color: string; kills: number; deaths: number }
+export type MetaMsg = { name: string; color: string; pilot: string; kills: number; deaths: number }
 export const COLORS = ['#60a5fa', '#f87171', '#4ade80', '#facc15', '#c084fc', '#fb923c', '#2dd4bf', '#f472b6']
+/** Who sits in the cockpit: '' is nobody, just the jet. */
+export const PILOTS = ['', '🐸', '🦆', '🐱', '🦊', '🐼', '🤖', '💀']
 
-/** A peer's meta as it may be shown: arbitrary bytes from the network become a short name and a palette color. */
+/** A peer's meta as it may be shown: arbitrary bytes from the network become a short name, a palette color and a palette pilot. */
 export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
   const name = typeof m.name === 'string' ? m.name.trim().slice(0, 16) : ''
   const n = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : 0)
   return {
     name: name || '?',
     color: COLORS.includes(m.color as string) ? (m.color as string) : '#9ca3af',
+    pilot: PILOTS.includes(m.pilot as string) ? (m.pilot as string) : '',
     kills: n(m.kills),
     deaths: n(m.deaths),
   }
