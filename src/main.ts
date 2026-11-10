@@ -53,6 +53,7 @@ addEventListener('keydown', (e) => {
   keys.add(e.code)
   if (TURN_KEYS.includes(e.code)) mouse = null // keyboard takes over until the mouse moves again
   if (e.code === 'Space') e.preventDefault()
+  if (e.code === 'KeyF' && !e.repeat) toggleFullscreen()
 })
 addEventListener('keyup', (e) => keys.delete(e.code))
 
@@ -64,7 +65,7 @@ addEventListener('pointermove', (e) => {
   mouse = { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H }
 })
 // Settings pane: one checkbox per sound. Clicks on it, or on the join screen, are not game input.
-const onSettings = (e: Event) => (e.target as Element).closest('#settings, #join') !== null
+const onSettings = (e: Event) => (e.target as Element).closest('#tools, #join') !== null
 for (const box of document.querySelectorAll<HTMLInputElement>('#settings [data-sound]')) {
   const name = box.dataset.sound as SoundName
   box.checked = soundOn[name]
@@ -80,6 +81,34 @@ addEventListener('pointerup', (e) => {
   if (e.pointerType === 'mouse' && e.button === 0) mouseFiring = false
 })
 addEventListener('blur', () => (mouseFiring = false))
+
+// Fullscreen: the ⛶ button or F. Safari on iPhone has no fullscreen for pages, so the button hides
+// there; adding the game to the Home Screen opens it without browser bars instead (manifest.webmanifest).
+const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void }
+const doc = document as Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void }
+const fsButton = document.getElementById('fullscreen')!
+fsButton.hidden = !root.requestFullscreen && !root.webkitRequestFullscreen
+fsButton.addEventListener('click', () => {
+  fsButton.blur() // or Space, the fire key, would press it again
+  toggleFullscreen()
+})
+function toggleFullscreen() {
+  try {
+    if (doc.fullscreenElement ?? doc.webkitFullscreenElement) {
+      if (doc.exitFullscreen) void doc.exitFullscreen().catch(() => {})
+      else doc.webkitExitFullscreen?.()
+    } else if (root.requestFullscreen) {
+      // Phones play in landscape: lock it where the browser allows (Android); elsewhere this just fails.
+      const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }
+      void root
+        .requestFullscreen()
+        .then(() => orientation.lock?.('landscape'))
+        .catch(() => {})
+    } else root.webkitRequestFullscreen?.()
+  } catch {
+    // Refused (e.g. not from a user gesture): stay windowed.
+  }
+}
 
 // Touch: on-screen buttons that hold down the matching key while pressed.
 // Safari zooms on a quick double tap even with touch-action: none; cancelling the touch stops it.

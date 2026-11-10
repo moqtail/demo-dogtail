@@ -1,0 +1,9 @@
+{
+  "name": "Dogfight",
+  "short_name": "Dogfight",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#020308",
+  "theme_color": "#020308"
+}

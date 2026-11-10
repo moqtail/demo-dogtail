@@ -35,6 +35,8 @@ Every player opens `https://<your-ip>:5174` and clicks through the certificate w
 
 Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: the plane steers toward the cursor, and holding the left button fires; pressing a turn key hands control back to the keyboard until the mouse moves again.
 
+Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where the browser allows. On iPhone, Safari has no fullscreen for pages: use Share → Add to Home Screen and open the game from there.
+
 Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
 
 After spawning, a plane blinks for 1.5 s and can't be hit; firing ends that early.

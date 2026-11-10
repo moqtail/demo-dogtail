@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
     <title>Dogfight by MOQtail</title>
+    <!-- Opened from the Home Screen, the game runs without browser bars: the iPhone's only way to fullscreen. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <style>
       html,
       body {
@@ -72,11 +77,28 @@
         border-color: #f87171;
         font-size: 22px;
       }
-      #settings {
+      #tools {
         position: fixed;
         top: 8px;
         right: 12px;
-        z-index: 2; /* opens over the scoreboard */
+        z-index: 2; /* settings open over the scoreboard */
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      #fullscreen {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        background: #111827cc;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        padding: 4px 10px;
+      }
+      #fullscreen[hidden] {
+        display: none;
+      }
+      #settings {
         background: #111827cc;
         border: 1px solid #374151;
         border-radius: 6px;
@@ -213,15 +235,18 @@
   </head>
   <body>
     <div id="hud">Connecting…</div>
-    <details id="settings">
-      <summary>⚙ Settings</summary>
-      <fieldset>
-        <legend>Sounds</legend>
-        <label><input type="checkbox" data-sound="fire" /> Firing</label>
-        <label><input type="checkbox" data-sound="hit" /> Getting hit</label>
-        <label><input type="checkbox" data-sound="death" /> Shot down</label>
-      </fieldset>
-    </details>
+    <div id="tools">
+      <button id="fullscreen" title="Full screen (F)" aria-label="Full screen">⛶</button>
+      <details id="settings">
+        <summary>⚙ Settings</summary>
+        <fieldset>
+          <legend>Sounds</legend>
+          <label><input type="checkbox" data-sound="fire" /> Firing</label>
+          <label><input type="checkbox" data-sound="hit" /> Getting hit</label>
+          <label><input type="checkbox" data-sound="death" /> Shot down</label>
+        </fieldset>
+      </details>
+    </div>
     <canvas id="game"></canvas>
     <ol id="scores" aria-label="Scoreboard"></ol>
     <form id="join">
