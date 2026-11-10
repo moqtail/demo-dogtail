@@ -13,6 +13,7 @@ npm install
 npm run dev        # http://localhost:5174, uses relay.moqtail.dev
 npm test
 npm run build      # static site in dist/
+npm run deploy     # build and upload to Cloudflare Workers (dogfight.zafergurel.com), see wrangler.jsonc
 ```
 
 Query params: `?room=<name>` (default `lobby`), `?relay=<moqt:// or https:// url>`.

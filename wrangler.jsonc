@@ -1,0 +1,7 @@
+// Static site on Cloudflare Workers: `npm run deploy` builds and uploads dist/.
+{
+  "name": "dogfight",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./dist" },
+  "routes": [{ "pattern": "dogfight.zafergurel.com", "custom_domain": true }],
+}
