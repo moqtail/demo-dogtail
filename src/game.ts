@@ -94,6 +94,7 @@ const wrapDelta = (from: number, to: number, max: number) => wrap(to - from + ma
  * a little; add speed to PosMsg if that shows.
  */
 export function predict(p: Plane, age: number): Plane {
+  if (p.away) return p // paused in a background tab: not moving, and its updates come ~1/s
   const t = Math.min(age, 0.25) // past this the snapshot is too stale to extrapolate
   return { ...p, x: wrap(p.x + Math.cos(p.a) * SPEED * t, W), y: wrap(p.y + Math.sin(p.a) * SPEED * t, H) }
 }

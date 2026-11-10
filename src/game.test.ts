@@ -91,6 +91,7 @@ describe('game rules', () => {
   it('predicts along the heading, capped for stale snapshots', () => {
     expect(predict({ x: 100, y: 100, a: 0, hp: 3 }, 0.1).x).toBeCloseTo(118)
     expect(predict({ x: 100, y: 100, a: 0, hp: 3 }, 5).x).toBeCloseTo(145)
+    expect(predict({ x: 100, y: 100, a: 0, hp: 3, away: true }, 0.1).x).toBe(100) // paused: stays put
   })
 
   it('cleans peer meta before it is shown', () => {
