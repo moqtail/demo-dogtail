@@ -29,8 +29,11 @@ export const MAX_HP = 3
 export const SPAWN_SHIELD = 1.5 // s after spawning that a plane can't be hit, unless it fires
 export const RESPAWN_DELAY = 2 // s; must stay under the 3 s silence after which peers drop a player
 
-/** `shielded`: just spawned and can't be hit; sent in `pos` so everyone sees it blink. */
-export type Plane = { x: number; y: number; a: number; hp: number; shielded?: boolean }
+/**
+ * `shielded`: just spawned and can't be hit; sent in `pos` so everyone sees it blink.
+ * `away`: its player's tab is in the background, where the game is paused and can't be hit.
+ */
+export type Plane = { x: number; y: number; a: number; hp: number; shielded?: boolean; away?: boolean }
 export type Bullet = { x: number; y: number; a: number; age: number; owner: string }
 /** `target` is a heading (rad) to steer toward, e.g. from the mouse; it is used when no turn key is held. */
 export type Input = { left: boolean; right: boolean; boost: boolean; target?: number }
@@ -109,6 +112,7 @@ export function ease(shown: Plane, target: Plane, dt: number): void {
   }
   shown.hp = target.hp
   shown.shielded = target.shielded
+  shown.away = target.away
 }
 
 /** Most a remote shot is fast-forwarded, so a badly set clock can't throw bullets across the map. */

@@ -39,6 +39,8 @@ Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where
 
 Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
 
+A player whose tab is in the background (or whose game has stopped drawing for half a second) shows faded and marked "(away)": the game is paused there, so the plane can't move or be hit. Coming back gives the 1.5 s spawn shield and ignores shots fired meanwhile.
+
 After spawning, a plane blinks for 1.5 s and can't be hit; firing ends that early.
 
 Network stats: **S**, Settings → Network, or `?debug`. They come from moqtail-ts client events: objects and bytes sent per track (`datagramsent`), and per player the one-way delay, jitter, loss and objects per second (`datagramreceived`, with `peerpublish` naming each track). The relay round trip is timed once, on the join request.

@@ -271,7 +271,9 @@ function drawPlane(p: Plane, color: string, label: string) {
 
 function drawPlaneAt(p: Plane, color: string, label: string) {
   ctx.save()
-  if (p.shielded && performance.now() % 300 < 150) ctx.globalAlpha = 0.3 // blinks while it can't be hit
+  if (p.away)
+    ctx.globalAlpha = 0.3 // its player is in another tab
+  else if (p.shielded && performance.now() % 300 < 150) ctx.globalAlpha = 0.3 // blinks while it can't be hit
   ctx.translate(p.x, p.y)
   ctx.fillStyle = '#e5e7eb'
   ctx.fillText(`${label} ${'♥'.repeat(p.hp)}`, -20, -22)
@@ -328,15 +330,32 @@ setInterval(() => {
   )
 }, 250)
 
+// A background tab pauses the frame loop, so the plane stops and can't be hit there. Peers are told
+// (`away` in pos) and draw it faded; the frame loop handles the return. Keys released while hidden
+// would otherwise stay held.
+const AWAY_AFTER = 500 // ms without a frame
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return
+  keys.clear()
+  mouseFiring = false
+  for (const b of document.querySelectorAll('#touch .held')) b.classList.remove('held')
+})
+
 // 20 Hz on a timer, not in the frame loop: background tabs pause rAF but still run timers
 // (throttled to ~1 Hz), which keeps an idle player under the 3 s drop timeout.
 setInterval(() => {
   const offset = clock.offset
-  net.sendPos({ ...plane, ts: offset === undefined ? undefined : Date.now() + offset })
+  const away = document.hidden || performance.now() - last > AWAY_AFTER
+  net.sendPos({ ...plane, away, ts: offset === undefined ? undefined : Date.now() + offset })
 }, 50)
 
 let last = performance.now()
 function frame(now: number) {
+  if (now - last > AWAY_AFTER) {
+    // Back from away: drop shots that arrived meanwhile, so none hits retroactively, and shield.
+    bullets = bullets.filter((b) => b.owner === me)
+    shieldFor = SPAWN_SHIELD
+  }
   const dt = Math.min((now - last) / 1000, 0.1)
   last = now
 
@@ -418,7 +437,8 @@ function frame(now: number) {
   for (const b of bullets) ctx.fillRect(b.x - 2, b.y - 2, 4, 4)
   for (const [id, peer] of peers) {
     const m = metas.get(id)
-    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', m?.name ?? id)
+    const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
+    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label)
   }
   if (alive) drawPlane(plane, myColor, 'you')
   for (const b of booms) drawBoom(b)
