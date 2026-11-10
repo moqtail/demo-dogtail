@@ -72,6 +72,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && !e.repeat) toggleMap()
   const r = /^Digit([1-4])$/.exec(e.code)
   if (r && !e.repeat) react(REACTIONS[Number(r[1]) - 1]!)
+  if (e.code === 'KeyE' && !e.repeat) toggleReactions()
 })
 addEventListener('keyup', (e) => keys.delete(e.code))
 
@@ -387,6 +388,31 @@ function toggleMap() {
   }
 }
 mapButton.setAttribute('aria-pressed', String(mapOn))
+
+// Reactions: 😀 or E hides the buttons and everyone's reactions, remembered on this device.
+const REACT_KEY = 'dogfight.reactions'
+let reactOn = true
+try {
+  reactOn = localStorage.getItem(REACT_KEY) !== 'off'
+} catch {
+  // Storage blocked: on.
+}
+const reactButton = document.getElementById('react-toggle')!
+reactButton.addEventListener('click', () => {
+  reactButton.blur() // or Space, the fire key, would press it again
+  toggleReactions()
+})
+function toggleReactions() {
+  reactOn = !reactOn
+  reactButton.setAttribute('aria-pressed', String(reactOn))
+  document.getElementById('reactions')!.hidden = !reactOn || lastReact === Infinity // none before joining
+  try {
+    localStorage.setItem(REACT_KEY, reactOn ? 'on' : 'off')
+  } catch {
+    // Storage blocked: lasts until reload.
+  }
+}
+reactButton.setAttribute('aria-pressed', String(reactOn))
 addEventListener('resize', fit)
 fit()
 
@@ -407,7 +433,7 @@ const JET = [...JET_TOP, ...JET_TOP.map(([x, y]) => [x!, -y!]).reverse()]
 
 function drawPlane(p: Plane, color: string, label: string, pilot: string, id: string) {
   const r = reactions.get(id)
-  if (r && performance.now() - r.at < REACT_SHOW) {
+  if (reactOn && r && performance.now() - r.at < REACT_SHOW) {
     // Above the name, rising a little as it fades.
     const t = (performance.now() - r.at) / REACT_SHOW
     ctx.save()
@@ -631,13 +657,13 @@ document.addEventListener('visibilitychange', () => {
 // Reactions: keys 1–4 or the buttons; at most one a second, so nobody can flood the room.
 function react(e: string) {
   const now = performance.now()
-  if (now - lastReact < 1000) return
+  if (!reactOn || now - lastReact < 1000) return
   lastReact = now
   reactions.set(me, { e, at: now })
   net.sendEvent({ t: 'react', e })
 }
 const reactBar = document.getElementById('reactions')!
-reactBar.hidden = false
+reactBar.hidden = !reactOn
 lastReact = 0
 for (const [i, e] of REACTIONS.entries()) {
   const b = Object.assign(document.createElement('button'), { textContent: e, title: `${e} (${i + 1})` })

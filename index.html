@@ -82,7 +82,8 @@
         border-color: #f87171;
         font-size: 22px;
       }
-      #map[aria-pressed='false'] {
+      #map[aria-pressed='false'],
+      #react-toggle[aria-pressed='false'] {
         opacity: 0.5;
       }
       #tools {
@@ -96,6 +97,7 @@
       }
       #fullscreen,
       #map,
+      #react-toggle,
       #leave {
         font: inherit;
         color: inherit;
@@ -355,6 +357,7 @@
     <div id="reactions" hidden aria-label="Reactions"></div>
     <div id="tools">
       <button id="leave" title="Leave the game" hidden>Leave</button>
+      <button id="react-toggle" title="Reactions (E)" aria-label="Reactions">😀</button>
       <button id="map" title="Minimap (M)" aria-label="Minimap" hidden>🗺</button>
       <button id="fullscreen" title="Full screen (F)" aria-label="Full screen">⛶</button>
       <details id="settings">

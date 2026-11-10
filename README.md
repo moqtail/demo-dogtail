@@ -47,7 +47,7 @@ Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
 
 Small screens also get a minimap at the bottom centre (🗺 button or **M** to hide it).
 
-Reactions: **1–4** or the buttons bottom right (beside FIRE on touch) pop 😂 🔥 👋 💢 over your plane, at most one a second. The kill feed (top left) shows the last few kills.
+Reactions: **1–4** or the buttons bottom right (beside FIRE on touch) pop 😂 🔥 👋 💢 over your plane, at most one a second; 😀 (top right) or **E** hides them, yours and everyone's. The kill feed (top left) shows the last few kills.
 
 Power-ups drop every 8 s and last 16 s: 🛡️ 5 s of armour (firing keeps it), ⚡ 6 s of double fire rate, ❤️ one heart (up to one over full). There is no server: every player derives the same drops from the room name and the shared clock, and only grabs are sent, so two players touching one within a network delay may both get it.
 
