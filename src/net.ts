@@ -18,7 +18,9 @@ import { LiveTrackSource, MOQtailClient } from 'moqtail/client'
 import { FullTrackName, Location, MoqtObject, ObjectForwardingPreference, RequestError, Tuple } from 'moqtail/model'
 import {
   ClockSync,
+  cleanEvent,
   cleanMeta,
+  cleanPos,
   clockSample,
   decode,
   encode,
@@ -101,9 +103,15 @@ export async function connect(
       if (!obj.payload) return
       try {
         const w = decode<WireMsg>(obj.payload)
-        if (w.t === 'pos') cb.onPos(player, w.p)
-        else if (w.t === 'meta') cb.onMeta(player, cleanMeta(w.m ?? {}))
-        else cb.onEvent(player, w)
+        // Everything from other players is checked here, before the game sees it.
+        if (w.t === 'pos') {
+          const p = cleanPos(w.p)
+          if (p) cb.onPos(player, p)
+        } else if (w.t === 'meta') cb.onMeta(player, cleanMeta(w.m ?? {}))
+        else {
+          const ev = cleanEvent(w)
+          if (ev) cb.onEvent(player, ev)
+        }
       } catch (err) {
         console.warn('dogtail: bad object', player, err) // one bad datagram must not stop the rest
       }

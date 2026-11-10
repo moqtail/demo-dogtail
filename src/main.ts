@@ -26,8 +26,6 @@ import {
   ease,
   findHit,
   predict,
-  edgePoint,
-  wrapDelta,
   shotLag,
   spawn,
   stepBullets,
@@ -42,6 +40,7 @@ import {
   REACTIONS,
   wrapDist,
 } from './game'
+import { BOOM_LIFE, drawFrame, type Boom, type View } from './draw'
 import { startAnalytics } from './analytics'
 import { connect, syncClock } from './net'
 import { watchStats } from './netstats'
@@ -69,10 +68,10 @@ addEventListener('keydown', (e) => {
   if (TURN_KEYS.includes(e.code)) mouse = null // keyboard takes over until the mouse moves again
   if (e.code === 'Space') e.preventDefault()
   if (e.code === 'KeyF' && !e.repeat) toggleFullscreen()
-  if (e.code === 'KeyM' && !e.repeat) toggleMap()
+  if (e.code === 'KeyM' && !e.repeat) minimap.flip()
+  if (e.code === 'KeyE' && !e.repeat) showReactions.flip()
   const r = /^Digit([1-4])$/.exec(e.code)
   if (r && !e.repeat) react(REACTIONS[Number(r[1]) - 1]!)
-  if (e.code === 'KeyE' && !e.repeat) toggleReactions()
 })
 addEventListener('keyup', (e) => keys.delete(e.code))
 
@@ -159,8 +158,7 @@ const metas = new Map<string, MetaMsg>()
 const killsSeen = new Set<string>()
 /** The last reaction per player (`me` included), shown over their plane for REACT_SHOW ms. */
 const reactions = new Map<string, { e: string; at: number }>()
-const REACT_SHOW = 2000
-let lastReact = Infinity // no reactions until connected (set to 0 then)
+let lastReact = 0
 /** Power-ups on the map now; keys of ones someone grabbed; and how long yours last (s). */
 let drops: PowerUp[] = []
 const grabbed = new Set<string>()
@@ -192,8 +190,67 @@ let deadFor = 0 // seconds until respawn; > 0 while shot down
 /** `net` is the last snapshot, `shown` the eased plane that is drawn. */
 const peers = new Map<string, { net: Plane; shown: Plane; seen: number }>()
 /** Explosion effects: a big one when a plane is shot down, a small one on a hit. */
-let booms: { x: number; y: number; age: number; big: boolean }[] = []
+let booms: Boom[] = []
 const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, big })
+let joined = false // set once connected: before that there is no `net` to send on
+
+/** An on/off setting with a top-right button, remembered on this device; on unless turned off. */
+function setting(key: string, buttonId: string, onChange: (on: boolean) => void = () => {}) {
+  const button = document.getElementById(buttonId)!
+  let on = true
+  try {
+    on = localStorage.getItem(key) !== 'off'
+  } catch {
+    // Storage blocked: on.
+  }
+  const show = () => {
+    button.setAttribute('aria-pressed', String(on))
+    onChange(on)
+  }
+  const flip = () => {
+    on = !on
+    show()
+    try {
+      localStorage.setItem(key, on ? 'on' : 'off')
+    } catch {
+      // Storage blocked: lasts until reload.
+    }
+  }
+  button.addEventListener('click', () => {
+    button.blur() // or Space, the fire key, would press it again
+    flip()
+  })
+  show()
+  return {
+    button,
+    flip,
+    get on() {
+      return on
+    },
+  }
+}
+
+// Minimap (zoomed only): the whole arena at the bottom centre, toggled with 🗺 or M.
+const minimap = setting('dogtail.map', 'map')
+// Reactions: 😀 or E hides the reaction buttons and everyone's reactions.
+const reactBar = document.getElementById('reactions')!
+const showReactions = setting('dogtail.reactions', 'react-toggle', (on) => (reactBar.hidden = !on || !joined))
+
+// Screens big enough show the whole arena. On a phone that would shrink a plane to a few pixels, so
+// there the view zooms to full size and follows your plane, with arrows pointing at players off screen.
+const ZOOM_BELOW = 0.6 // arena scale under which the view zooms in
+let view: View = { s: 1, w: W, h: H }
+let cam = { x: W / 2, y: H / 2 } // arena point at the centre of the view
+function fit() {
+  const fitScale = Math.min(innerWidth / W, innerHeight / H)
+  const s = fitScale >= ZOOM_BELOW ? fitScale : 1
+  minimap.button.hidden = s !== 1 // the minimap only exists while zoomed in
+  view = { s, w: Math.min(W, innerWidth / s), h: Math.min(H, innerHeight / s) }
+  canvas.width = view.w * s
+  canvas.height = view.h * s
+}
+addEventListener('resize', fit)
+fit()
 
 // Join screen: name, color and room, remembered on this device. The room goes into the URL so the
 // address bar is the invite link.
@@ -303,14 +360,8 @@ const net = await connect(
         killsSeen.add(key)
         feed(m.by, id)
       }
-      if (m.t === 'react') {
-        if (REACTIONS.includes(m.e)) reactions.set(id, { e: m.e, at: performance.now() })
-        return
-      }
-      if (m.t === 'grab') {
-        if (typeof m.k === 'string' && m.k.length < 24) grabbed.add(m.k)
-        return
-      }
+      if (m.t === 'react') return void reactions.set(id, { e: m.e, at: performance.now() })
+      if (m.t === 'grab') return void grabbed.add(m.k)
       if (m.t === 'shot')
         bullets.push(
           ...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now(), clock.offset)),
@@ -350,267 +401,6 @@ setTimeout(() => {
   if (peers.size + 1 > ROOM_CAP)
     (analytics.track('room_full', { room }), location.replace(`?room=${randomRoom()}&full=${encodeURIComponent(room)}`))
 }, 1500)
-
-// Screens big enough show the whole arena. On a phone that would shrink a plane to a few pixels, so
-// there the view zooms to full size and follows your plane, with arrows pointing at players off screen.
-const ZOOM_BELOW = 0.6 // arena scale under which the view zooms in
-let view = { s: 1, w: W, h: H } // canvas px per arena unit, and the arena units in view
-let cam = { x: W / 2, y: H / 2 } // arena point at the centre of the view
-function fit() {
-  const fitScale = Math.min(innerWidth / W, innerHeight / H)
-  const s = fitScale >= ZOOM_BELOW ? fitScale : 1
-  mapButton.hidden = s !== 1 // the minimap only exists while zoomed in
-  view = { s, w: Math.min(W, innerWidth / s), h: Math.min(H, innerHeight / s) }
-  canvas.width = view.w * s
-  canvas.height = view.h * s
-}
-// Minimap (zoomed only): the whole arena in a corner, on by default, toggled with 🗺 or M and
-// remembered on this device.
-const MAP_KEY = 'dogtail.map'
-let mapOn = true
-try {
-  mapOn = localStorage.getItem(MAP_KEY) !== 'off'
-} catch {
-  // Storage blocked: on.
-}
-const mapButton = document.getElementById('map')!
-mapButton.addEventListener('click', () => {
-  mapButton.blur() // or Space, the fire key, would press it again
-  toggleMap()
-})
-function toggleMap() {
-  mapOn = !mapOn
-  mapButton.setAttribute('aria-pressed', String(mapOn))
-  try {
-    localStorage.setItem(MAP_KEY, mapOn ? 'on' : 'off')
-  } catch {
-    // Storage blocked: lasts until reload.
-  }
-}
-mapButton.setAttribute('aria-pressed', String(mapOn))
-
-// Reactions: 😀 or E hides the buttons and everyone's reactions, remembered on this device.
-const REACT_KEY = 'dogtail.reactions'
-let reactOn = true
-try {
-  reactOn = localStorage.getItem(REACT_KEY) !== 'off'
-} catch {
-  // Storage blocked: on.
-}
-const reactButton = document.getElementById('react-toggle')!
-reactButton.addEventListener('click', () => {
-  reactButton.blur() // or Space, the fire key, would press it again
-  toggleReactions()
-})
-function toggleReactions() {
-  reactOn = !reactOn
-  reactButton.setAttribute('aria-pressed', String(reactOn))
-  document.getElementById('reactions')!.hidden = !reactOn || lastReact === Infinity // none before joining
-  try {
-    localStorage.setItem(REACT_KEY, reactOn ? 'on' : 'off')
-  } catch {
-    // Storage blocked: lasts until reload.
-  }
-}
-reactButton.setAttribute('aria-pressed', String(reactOn))
-addEventListener('resize', fit)
-fit()
-
-// A jet, nose along +x: swept wings and twin tail fins, mirrored about the fuselage.
-const JET_TOP = [
-  [18, 0],
-  [8, -2.5],
-  [0, -3],
-  [-6, -13],
-  [-10, -13],
-  [-7, -3],
-  [-12, -3],
-  [-15, -8],
-  [-17, -8],
-  [-16, -2],
-]
-const JET = [...JET_TOP, ...JET_TOP.map(([x, y]) => [x!, -y!]).reverse()]
-
-function drawPlane(p: Plane, color: string, label: string, pilot: string, id: string) {
-  const r = reactions.get(id)
-  if (reactOn && r && performance.now() - r.at < REACT_SHOW) {
-    // Above the name, rising a little as it fades.
-    const t = (performance.now() - r.at) / REACT_SHOW
-    ctx.save()
-    ctx.globalAlpha = 1 - t * t
-    ctx.font = '26px system-ui'
-    ctx.textAlign = 'center'
-    ctx.fillText(r.e, p.x, p.y - 34 - t * 12)
-    ctx.restore()
-  }
-  ctx.save()
-  if (p.away)
-    ctx.globalAlpha = 0.3 // its player is in another tab
-  else if (p.shielded && performance.now() % 300 < 150) ctx.globalAlpha = 0.3 // blinks while it can't be hit
-  ctx.translate(p.x, p.y)
-  ctx.fillStyle = '#e5e7eb'
-  ctx.fillText(`${label} ${'♥'.repeat(p.hp)}`, -20, -22)
-  ctx.rotate(p.a)
-  ctx.fillStyle = color
-  ctx.beginPath()
-  for (const [x, y] of JET) ctx.lineTo(x!, y!)
-  ctx.fill()
-  if (pilot) {
-    // Upright in the cockpit, whichever way the jet points.
-    ctx.translate(5, 0)
-    ctx.rotate(-p.a)
-    ctx.font = '13px system-ui'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(pilot, 0, 0)
-  }
-  ctx.restore()
-}
-
-/** Power-ups: an icon in a softly pulsing ring. */
-function drawDrops() {
-  const pulse = 1 + Math.sin(performance.now() / 200) * 0.1
-  ctx.save()
-  ctx.font = '18px system-ui'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.strokeStyle = '#fbbf24'
-  ctx.lineWidth = 2
-  for (const d of drops) {
-    ctx.beginPath()
-    ctx.arc(d.x, d.y, 16 * pulse, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.fillText(POWER_ICON[d.kind], d.x, d.y + 1)
-  }
-  ctx.restore()
-}
-
-/** Everything in the arena, in arena coordinates. */
-function drawScene() {
-  ctx.fillStyle = '#0b1020'
-  ctx.fillRect(0, 0, W, H)
-  ctx.strokeStyle = '#334155' // the seam where the arena wraps
-  ctx.lineWidth = 2 / view.s
-  ctx.strokeRect(0, 0, W, H)
-  ctx.font = '12px system-ui'
-  ctx.fillStyle = '#fbbf24'
-  for (const b of bullets) ctx.fillRect(b.x - 2, b.y - 2, 4, 4)
-  drawDrops()
-  ctx.font = '12px system-ui'
-  for (const [id, peer] of peers) {
-    const m = metas.get(id)
-    const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
-    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label, m?.pilot ?? '', id)
-  }
-  if (deadFor <= 0) {
-    drawPlane(plane, myColor, 'you', myPilot, me)
-    drawPulse()
-  }
-  for (const b of booms) drawBoom(b)
-}
-
-/**
- * For 2 s after you appear, rings in your color shrink onto your plane, so you can find yourself in a
- * crowd. Only you see them.
- */
-function drawPulse() {
-  const t = (performance.now() - spawnedAt) / 2000
-  if (t >= 1) return
-  ctx.strokeStyle = myColor
-  ctx.lineWidth = 3 / view.s
-  for (const phase of [0, 0.5]) {
-    const k = (t * 2 + phase) % 1 // two rings, half a cycle apart
-    ctx.globalAlpha = (1 - t) * k
-    ctx.beginPath()
-    ctx.arc(plane.x, plane.y, 20 + 100 * (1 - k), 0, Math.PI * 2)
-    ctx.stroke()
-  }
-  ctx.globalAlpha = 1
-}
-
-/** Zoomed in: a small arrow at the screen edge toward each player out of view, in their color. */
-function drawArrows() {
-  ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2) * view.s, (view.h / 2) * view.s) // origin at centre
-  for (const [id, peer] of peers) {
-    if (peer.shown.hp <= 0) continue
-    const dx = wrapDelta(cam.x, peer.shown.x, W)
-    const dy = wrapDelta(cam.y, peer.shown.y, H)
-    const at = edgePoint(dx, dy, view.w / 2, view.h / 2, 16)
-    if (!at) continue
-    ctx.save()
-    ctx.translate(at.x, at.y)
-    ctx.rotate(Math.atan2(dy, dx))
-    ctx.globalAlpha = peer.shown.away ? 0.3 : 0.9
-    ctx.fillStyle = metas.get(id)?.color ?? '#9ca3af'
-    ctx.beginPath()
-    ctx.moveTo(10, 0)
-    ctx.lineTo(-6, -7)
-    ctx.lineTo(-6, 7)
-    ctx.fill()
-    ctx.restore()
-  }
-}
-
-/** Zoomed in: the whole arena at the bottom centre, between the touch controls. */
-function drawMap() {
-  const mw = 120
-  const k = mw / W
-  const mh = H * k
-  const x0 = (canvas.width - mw) / 2
-  const y0 = canvas.height - mh - 16
-  ctx.setTransform(1, 0, 0, 1, x0, y0)
-  ctx.fillStyle = '#11182799'
-  ctx.strokeStyle = '#475569'
-  ctx.lineWidth = 1
-  ctx.fillRect(0, 0, mw, mh)
-  ctx.strokeRect(0, 0, mw, mh)
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(0, 0, mw, mh)
-  ctx.clip()
-  // What's on screen; it wraps across the edges like the arena does.
-  ctx.strokeStyle = '#94a3b8'
-  for (const ox of [-W, 0, W])
-    for (const oy of [-H, 0, H])
-      ctx.strokeRect((cam.x - view.w / 2 + ox) * k, (cam.y - view.h / 2 + oy) * k, view.w * k, view.h * k)
-  ctx.restore()
-  const dot = (p: Plane, color: string, r: number) => {
-    ctx.fillStyle = color
-    ctx.beginPath()
-    ctx.arc(p.x * k, p.y * k, r, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  ctx.fillStyle = '#fbbf24'
-  for (const d of drops) ctx.fillRect(d.x * k - 1.5, d.y * k - 1.5, 3, 3)
-  for (const [id, peer] of peers) {
-    if (peer.shown.hp <= 0) continue
-    ctx.globalAlpha = peer.shown.away ? 0.3 : 1
-    dot(peer.shown, metas.get(id)?.color ?? '#9ca3af', 2)
-  }
-  ctx.globalAlpha = 1
-  if (deadFor <= 0) {
-    dot(plane, '#f9fafb', 4.5) // a white ring around your color, so you stand out
-    dot(plane, myColor, 3)
-  }
-}
-
-const BOOM_LIFE = 0.6 // s
-/** An expanding, fading fireball with a ring around it. */
-function drawBoom(b: { x: number; y: number; age: number; big: boolean }) {
-  const t = b.age / BOOM_LIFE
-  const r = (b.big ? 45 : 14) * Math.sqrt(t)
-  ctx.globalAlpha = 1 - t
-  ctx.fillStyle = t < 0.3 ? '#fde68a' : '#f97316'
-  ctx.beginPath()
-  ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = '#fbbf24'
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.arc(b.x, b.y, r * 1.5, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.globalAlpha = 1
-}
 
 // Meta goes out on join, on every score change and every 2 s: the repeats reach players who join
 // later without relying on the relay to replay an old group.
@@ -657,14 +447,13 @@ document.addEventListener('visibilitychange', () => {
 // Reactions: keys 1–4 or the buttons; at most one a second, so nobody can flood the room.
 function react(e: string) {
   const now = performance.now()
-  if (!reactOn || now - lastReact < 1000) return
+  if (!joined || !showReactions.on || now - lastReact < 1000) return
   lastReact = now
   reactions.set(me, { e, at: now })
   net.sendEvent({ t: 'react', e })
 }
-const reactBar = document.getElementById('reactions')!
-reactBar.hidden = !reactOn
-lastReact = 0
+joined = true
+reactBar.hidden = !showReactions.on
 for (const [i, e] of REACTIONS.entries()) {
   const b = Object.assign(document.createElement('button'), { textContent: e, title: `${e} (${i + 1})` })
   b.addEventListener('click', () => (b.blur(), react(e)))
@@ -783,17 +572,18 @@ function frame(now: number) {
   for (const b of booms) b.age += dt
   booms = booms.filter((b) => b.age < BOOM_LIFE)
 
-  // The arena wraps, so the scene is drawn 3×3 times around the camera; the canvas shows what's in view.
-  ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2 - cam.x) * view.s, (view.h / 2 - cam.y) * view.s)
-  for (const ox of [-W, 0, W])
-    for (const oy of [-H, 0, H]) {
-      ctx.save()
-      ctx.translate(ox, oy)
-      drawScene()
-      ctx.restore()
-    }
-  if (zoomed) drawArrows()
-  if (zoomed && mapOn) drawMap()
+  drawFrame(ctx, {
+    view,
+    cam,
+    bullets,
+    drops,
+    booms,
+    peers,
+    metas,
+    reactions: showReactions.on ? reactions : undefined,
+    me: { id: me, plane, alive, color: myColor, pilot: myPilot, spawnedAt },
+    showMap: minimap.on,
+  })
 
   const powers = [
     armorFor > 0 ? ` · ${POWER_ICON.shield} ${Math.ceil(armorFor)}` : '',

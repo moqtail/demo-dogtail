@@ -19,7 +19,9 @@ import {
   BULLET_LIFE,
   H,
   W,
+  cleanEvent,
   cleanMeta,
+  cleanPos,
   powerUpsAt,
   POWER_SLOT,
   POWER_LIFE,
@@ -181,5 +183,32 @@ describe('game rules', () => {
     expect(a.map((p) => p.key)).not.toEqual(powerUpsAt('falcon-1', t + POWER_SLOT).map((p) => p.key)) // the oldest expires
     expect(powerUpsAt('hawk-2', t)[0]).not.toEqual(a[0]) // other rooms differ
     for (const p of a) expect(p.x >= 0 && p.x < 1600 && p.y >= 0 && p.y < 1000).toBe(true)
+  })
+
+  it('checks every message from other players before it is used', () => {
+    expect(cleanPos({ x: 1700, y: -10, a: 1, hp: 3, away: 'yes' })).toEqual({
+      x: 100,
+      y: 990,
+      a: 1,
+      hp: 3,
+      shielded: false,
+      away: false,
+      ts: undefined,
+    })
+    expect(cleanPos({ x: NaN, y: 0, a: 0, hp: 3 })).toBeUndefined()
+    expect(cleanPos({ x: 0, y: 0, a: 0, hp: 1e9 })!.hp).toBe(20)
+    expect(cleanPos(null)).toBeUndefined()
+
+    expect(cleanEvent({ t: 'shot', x: 10, y: 20, a: 0.5, ts: 7 })).toEqual({ t: 'shot', x: 10, y: 20, a: 0.5, ts: 7 })
+    expect(cleanEvent({ t: 'shot', x: '10', y: 20, a: 0.5 })).toBeUndefined()
+    expect(cleanEvent({ t: 'hit', by: 'abc123' })).toEqual({ t: 'hit', by: 'abc123' })
+    expect(cleanEvent({ t: 'hit', by: 'x'.repeat(100) })).toBeUndefined()
+    expect(cleanEvent({ t: 'kill', by: 'abc123', n: 2 })).toEqual({ t: 'kill', by: 'abc123', n: 2 })
+    expect(cleanEvent({ t: 'kill', by: 'abc123', n: 0 })).toBeUndefined()
+    expect(cleanEvent({ t: 'react', e: '🔥' })).toEqual({ t: 'react', e: '🔥' })
+    expect(cleanEvent({ t: 'react', e: '<b>hi</b>' })).toBeUndefined()
+    expect(cleanEvent({ t: 'grab', k: '225000015:1' })).toEqual({ t: 'grab', k: '225000015:1' })
+    expect(cleanEvent({ t: 'grab', k: 'anything' })).toBeUndefined()
+    expect(cleanEvent({ t: 'nope' })).toBeUndefined()
   })
 })

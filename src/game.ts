@@ -107,6 +107,48 @@ export function powerUpsAt(room: string, now: number): PowerUp[] {
   return out
 }
 
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+const playerId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 16
+
+/** A peer's pos as it may be used, or undefined: positions wrapped into the arena, hp a small count. */
+export function cleanPos(p: unknown): PosMsg | undefined {
+  if (typeof p !== 'object' || p === null) return undefined
+  const m = p as Record<string, unknown>
+  if (!finite(m.x) || !finite(m.y) || !finite(m.a) || !Number.isInteger(m.hp)) return undefined
+  return {
+    x: wrap(m.x, W),
+    y: wrap(m.y, H),
+    a: m.a,
+    hp: Math.min(Math.max(m.hp as number, 0), 20),
+    shielded: m.shielded === true,
+    away: m.away === true,
+    ts: finite(m.ts) ? m.ts : undefined,
+  }
+}
+
+/** A peer's event as it may be used, or undefined: every field checked, reactions from the palette. */
+export function cleanEvent(e: unknown): EventMsg | undefined {
+  if (typeof e !== 'object' || e === null) return undefined
+  const m = e as Record<string, unknown>
+  switch (m.t) {
+    case 'shot':
+      return finite(m.x) && finite(m.y) && finite(m.a)
+        ? { t: 'shot', x: wrap(m.x, W), y: wrap(m.y, H), a: m.a, ts: finite(m.ts) ? m.ts : undefined }
+        : undefined
+    case 'hit':
+      return playerId(m.by) ? { t: 'hit', by: m.by } : undefined
+    case 'kill':
+      return playerId(m.by) && Number.isInteger(m.n) && (m.n as number) > 0
+        ? { t: 'kill', by: m.by, n: m.n as number }
+        : undefined
+    case 'react':
+      return REACTIONS.includes(m.e as string) ? { t: 'react', e: m.e as string } : undefined
+    case 'grab':
+      return typeof m.k === 'string' && /^-?\d+:\d+$/.test(m.k) ? { t: 'grab', k: m.k } : undefined
+  }
+  return undefined
+}
+
 export const wrap = (v: number, max: number) => ((v % max) + max) % max
 
 /** Health for a room of `players`: MAX_HP up to 10, one more for every 10 beyond, as busy rooms mean more fire. */
