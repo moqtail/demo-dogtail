@@ -24,6 +24,17 @@ export type NetCallbacks = {
   onMeta: (player: string, m: MetaMsg) => void
 }
 
+// shortcut: Safari has only the newer datagrams.createWritable(), not the .writable moqtail calls;
+// drop this once moqtail falls back to createWritable() itself.
+type Duplex = { writable?: WritableStream; createWritable?: () => WritableStream }
+globalThis.WebTransport = class extends WebTransport {
+  constructor(url: string | URL, options?: WebTransportOptions) {
+    super(url, options)
+    const d = this.datagrams as unknown as Duplex
+    if (!d.writable && d.createWritable) Object.defineProperty(d, 'writable', { value: d.createWritable() })
+  }
+}
+
 /**
  * One outgoing track. PUBLISH announces it (that is how peers discover it), and its objects go out as
  * datagrams, not streams: Safari stops granting credit for server-opened streams after a few dozen
