@@ -643,10 +643,8 @@ function frame(now: number) {
     play('hit')
   }
 
-  // Zoomed in, the camera follows your plane (and stays put while you are shot down).
   const zoomed = view.w < W || view.h < H
   if (!zoomed) cam = { x: W / 2, y: H / 2 }
-  else if (alive) cam = { x: plane.x, y: plane.y }
   const mx = cam.x + ((mouse?.fx ?? 0.5) - 0.5) * view.w
   const my = cam.y + ((mouse?.fy ?? 0.5) - 0.5) * view.h
 
@@ -663,6 +661,9 @@ function frame(now: number) {
       },
       dt,
     )
+  // Zoomed in, the camera follows your plane (and stays put while you are shot down). Set after the
+  // plane moves, so it is drawn dead centre: set before, frame-time jitter would make it tremble.
+  if (zoomed && alive) cam = { x: plane.x, y: plane.y }
   cooldown -= dt
   if (alive && (keys.has('Space') || mouseFiring) && cooldown <= 0) {
     cooldown = rapidFor > 0 ? FIRE_COOLDOWN / 2 : FIRE_COOLDOWN
