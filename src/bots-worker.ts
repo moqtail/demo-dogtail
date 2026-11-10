@@ -38,7 +38,7 @@ import {
 import { connect, syncClock } from './net'
 
 // In a worker, so the bots keep full speed while their tab is in the background (browsers throttle
-// timers in background tabs, not in workers). The page sends { room, n, relay } to start them.
+// timers in background tabs, not in workers). The page sends { room, n, relay, certHash } to start them.
 let room = ''
 const clock = syncClock()
 const stamp = () => (clock.offset === undefined ? undefined : Date.now() + clock.offset)
@@ -47,7 +47,7 @@ let failed = 0
 let lastError = ''
 let received = 0
 
-async function bot(i: number, relay: string) {
+async function bot(i: number, relay: string, certHash: string) {
   const me = Math.random().toString(16).slice(2, 8)
   let plane: Plane = spawn()
   let bullets: Bullet[] = []
@@ -55,7 +55,7 @@ async function bot(i: number, relay: string) {
   let deaths = 0
   let turn = 0
   const seen = new Map<string, number>() // other players, by last pos, for the room's size
-  const net = await connect(relay, room, me, '', {
+  const net = await connect(relay, room, me, certHash, {
     onPos: (id) => {
       received++
       seen.set(id, Date.now())
@@ -114,13 +114,13 @@ async function bot(i: number, relay: string) {
   }, 100)
 }
 
-onmessage = (e: MessageEvent<{ room: string; n: number; relay: string }>) => {
+onmessage = (e: MessageEvent<{ room: string; n: number; relay: string; certHash: string }>) => {
   room = e.data.room
   // Staggered joins, 5 a second, so the relay isn't hit by every PUBLISH at once.
   for (let i = 1; i <= e.data.n; i++)
     setTimeout(
       () =>
-        bot(i, e.data.relay).catch((err) => {
+        bot(i, e.data.relay, e.data.certHash).catch((err) => {
           failed++
           lastError = String(err)
         }),
