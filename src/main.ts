@@ -25,6 +25,7 @@ import {
   ease,
   findHit,
   predict,
+  shotLag,
   spawn,
   stepBullets,
   stepPlane,
@@ -205,7 +206,8 @@ const net = await connect(relay, room, me, __CERT_HASH__, {
       if (killsSeen.has(key)) return // a repeat of a kill already counted
       killsSeen.add(key)
     }
-    if (m.t === 'shot') bullets.push({ x: m.x, y: m.y, a: m.a, age: 0, owner: id })
+    if (m.t === 'shot')
+      bullets.push(...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now())))
     else {
       const peer = peers.get(id)
       if (peer) boom(peer.shown, m.t === 'kill')
@@ -335,7 +337,7 @@ function frame(now: number) {
     shieldFor = 0 // firing gives up the spawn shield, so it can't be used to attack safely
     const shot = { x: plane.x, y: plane.y, a: plane.a }
     bullets.push({ ...shot, age: 0, owner: me })
-    net.sendEvent({ t: 'shot', ...shot })
+    net.sendEvent({ t: 'shot', ...shot, ts: Date.now() })
     play('fire')
   }
   bullets = stepBullets(bullets, dt)

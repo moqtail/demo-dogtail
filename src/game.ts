@@ -38,7 +38,9 @@ export type Input = { left: boolean; right: boolean; boost: boolean; target?: nu
 /** Messages carried on the wire; `pos` track objects are PosMsg, `events` objects are EventMsg. */
 export type PosMsg = Plane
 export type EventMsg =
-  { t: 'shot'; x: number; y: number; a: number } | { t: 'hit'; by: string } | { t: 'kill'; by: string; n: number }
+  | { t: 'shot'; x: number; y: number; a: number; ts?: number }
+  | { t: 'hit'; by: string }
+  | { t: 'kill'; by: string; n: number }
 
 /** Who a player is and their score, on the `meta` track. */
 export type MetaMsg = { name: string; color: string; kills: number; deaths: number }
@@ -106,6 +108,17 @@ export function ease(shown: Plane, target: Plane, dt: number): void {
   shown.hp = target.hp
   shown.shielded = target.shielded
 }
+
+/** Most a remote shot is fast-forwarded, so a badly set clock can't throw bullets across the map. */
+export const MAX_LAG = 0.3 // s
+
+/**
+ * How long a shot took to arrive, from the shooter's wall clock (`ts`) to ours, clamped to 0..MAX_LAG.
+ * Remote bullets are advanced by this so they line up with where the shooter fired them.
+ * shortcut: trusts device clocks (normally synced to a few tens of ms); measure RTT if skew shows.
+ */
+export const shotLag = (ts: number | undefined, now: number) =>
+  ts === undefined ? 0 : Math.min(Math.max((now - ts) / 1000, 0), MAX_LAG)
 
 /** Advances bullets and drops the expired ones. */
 export function stepBullets(bullets: Bullet[], dt: number): Bullet[] {

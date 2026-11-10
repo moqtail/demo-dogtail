@@ -25,6 +25,7 @@ import {
   encode,
   findHit,
   predict,
+  shotLag,
   stepBullets,
   stepPlane,
   turnToward,
@@ -98,6 +99,13 @@ describe('game rules', () => {
       deaths: 2,
     })
     expect(cleanMeta({}).name).toBe('?')
+  })
+
+  it('fast-forwards remote shots by their travel time, within bounds', () => {
+    expect(shotLag(1000, 1100)).toBeCloseTo(0.1)
+    expect(shotLag(1000, 900)).toBe(0) // shooter's clock ahead of ours
+    expect(shotLag(1000, 9000)).toBe(0.3)
+    expect(shotLag(undefined, 9000)).toBe(0)
   })
 
   it('round-trips wire messages', () => {
