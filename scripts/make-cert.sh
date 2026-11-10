@@ -12,4 +12,4 @@ IP=${1:-$(ipconfig getifaddr en0 2>/dev/null || hostname -I | cut -d' ' -f1)}
 openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 13 \
   -subj /CN=dogfight -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:$IP" \
   -keyout cert/key.pem -out cert/cert.pem 2>/dev/null
-echo "cert for $IP in apps/dogfight/cert, valid 13 days"
+echo "cert for $IP in cert/, valid 13 days"

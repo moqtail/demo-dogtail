@@ -2,23 +2,39 @@
 
 A multiplayer top-down plane shooter that runs entirely over a MOQtail relay. There is no game server.
 
-## Play
+Play at **https://dogfight.zafergurel.com**: pick a name, a colour and a room, and send the invite link to friends. It runs over the public relay `relay.moqtail.dev`; nothing to install, and phones and tablets get on-screen buttons.
+
+Built with [MOQtail](https://github.com/moqtail/moqtail), a Media over QUIC (MoQ) library and relay.
+
+## Develop
 
 ```bash
-apps/dogfight/scripts/make-cert.sh          # self-signed cert for this machine's LAN IP, valid 13 days
-cargo run -p relay -- --port 4433 --cert-file apps/dogfight/cert/cert.pem --key-file apps/dogfight/cert/key.pem
-npm --prefix apps/dogfight run dev
+npm install
+npm run dev        # http://localhost:5174, uses relay.moqtail.dev
+npm test
+npm run build      # static site in dist/
 ```
 
-Every player, on this machine or another device on the LAN, opens `https://<your-ip>:5174`. The browser warns about the page's self-signed certificate once; choose Advanced → Proceed. Nothing needs to be installed on any device. A join screen asks for a name, a colour and a room; it shows the invite link for that room, and the address bar carries it once you join. Name and colour are remembered per device. Optional query params: `?room=<name>` (default `lobby`), `?relay=<url>` (default: the host that served the page, port 4433).
+Query params: `?room=<name>` (default `lobby`), `?relay=<moqt:// or https:// url>`.
 
-The scoreboard at the top right lists everyone's kills / deaths.
+### LAN play with your own relay
 
-Controls: keyboard as below. On a touchscreen, on-screen buttons appear: ◀ ▶ bottom left for your left thumb, FIRE bottom right for your right.
+To play on a local network without the public relay, run the MOQtail relay on this machine with a self-signed certificate that devices trust by hash:
 
-How the connection works: Vite injects the SHA-256 hash of the certificate into the page, and the page passes it to WebTransport as `serverCertificateHashes`, so the relay is trusted by hash rather than by a certificate authority. Chrome only accepts this for ECDSA certificates valid for 14 days or less, so rerun `make-cert.sh` when it expires and restart the relay and Vite.
+```bash
+scripts/make-cert.sh   # cert for this machine's LAN IP, valid 13 days
+# in a moqtail checkout:
+cargo run -p relay -- --port 4433 --cert-file <dogfight>/cert/cert.pem --key-file <dogfight>/cert/key.pem
+npm run dev            # now https, and the page uses the relay on this machine
+```
+
+Every player opens `https://<your-ip>:5174` and clicks through the certificate warning once (Advanced → Proceed). Vite puts the certificate's SHA-256 hash into the page, which passes it to WebTransport as `serverCertificateHashes`. Browsers accept that only for ECDSA certificates valid for 14 days or less, so rerun `make-cert.sh` when it expires and restart the relay and Vite. Safari needs iOS/macOS 26.4 or later.
+
+## Controls
 
 Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: the plane steers toward the cursor, and holding the left button fires; pressing a turn key hands control back to the keyboard until the mouse moves again.
+
+Touch: ◀ ▶ bottom left, FIRE bottom right.
 
 Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a falling crash when it is shot down. Each can be turned off under ⚙ Settings (top right); the choice is remembered per browser.
 
@@ -38,5 +54,5 @@ Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a fall
 
 1. **Playable core**: fly, shoot, hit, respawn, kill count. Random name, fixed room, no polish.
 2. **Feel**: smooth remote planes, respawn delay, explosions. Tuning speeds and turn rate waits for playtesting.
-3. **Game shell** (this iteration): join screen with name and colour, rooms by link, scoreboard, `meta` track.
+3. **Game shell**: join screen with name and colour, rooms by link, scoreboard, `meta` track.
 4. **Extras, if they turn out to matter:** datagrams for `pos`, mobile controls, sound.

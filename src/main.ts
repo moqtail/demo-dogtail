@@ -37,7 +37,8 @@ import { play, setSound, soundOn, type SoundName } from './sound'
 declare const __CERT_HASH__: string // injected by vite.config.ts
 
 const params = new URLSearchParams(location.search)
-const relay = params.get('relay') ?? `moqt://${location.hostname}:4433`
+// With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
+const relay = params.get('relay') ?? (__CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.moqtail.dev')
 const me = Math.random().toString(16).slice(2, 8)
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
