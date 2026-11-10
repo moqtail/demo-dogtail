@@ -2,7 +2,7 @@
 
 A multiplayer top-down plane shooter that runs entirely over a MOQtail relay. There is no game server.
 
-Play at **https://dogfight.zafergurel.com**: pick a name, a colour and a room, and send the invite link to friends. It runs over the public relay `relay.moqtail.dev`; nothing to install, and phones and tablets get on-screen buttons.
+Play at **https://dogfight.zafergurel.com**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.moqtail.dev`; nothing to install, and phones and tablets get on-screen buttons.
 
 Built with [MOQtail](https://github.com/moqtail/moqtail), a Media over QUIC (MoQ) library and relay.
 
@@ -37,6 +37,8 @@ Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: t
 
 On small screens (phones), where the whole arena would shrink planes to a few pixels, the view zooms to full size and follows your plane; arrows at the screen edge point to players out of view. Computers and tablets show the whole arena.
 
+**Leave** (top right) goes back to the join screen to change room, name or color; on the iPhone Home Screen app there is no back button otherwise.
+
 Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where the browser allows. On iPhone, Safari has no fullscreen for pages: use Share → Add to Home Screen (keep "Open as Web App" on) and open the game from that icon; it runs without Safari's bars.
 
 Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
@@ -55,7 +57,7 @@ All objects travel as **datagrams**; the tracks are still announced with `PUBLIS
 
 - Each player owns the namespace `dogfight/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es three tracks in it:
   - `pos`: 20 snapshots/s, **one group per snapshot**. Each snapshot is self-contained, so the relay and late joiners can skip straight to the latest group.
-  - `meta`: name, colour and score, **one group per update**. Sent on join, on each score change and every 2 s, so players who join later learn who everyone is without the relay having to replay old groups. Names and colours from peers are cleaned before they are shown.
+  - `meta`: name, color and score, **one group per update**. Sent on join, on each score change and every 2 s, so players who join later learn who everyone is without the relay having to replay old groups. Names and colors from peers are cleaned before they are shown.
   - `events`: shots, hits and kills, **one group per event**. Events are independent, so a late joiner or a stream the relay stops loses at most one event. An earlier version used one group per life, but then a single stopped stream dropped every shot for the rest of that life.
 - Every player sends one `SUBSCRIBE_TRACKS` on `dogfight/<room>`. The relay pushes a `PUBLISH` for every other player's tracks, both existing ones and ones published later. That handles discovery and subscribing in a single request.
 - A player whose `pos` has been silent for 3 s is dropped.
@@ -68,5 +70,5 @@ All objects travel as **datagrams**; the tracks are still announced with `PUBLIS
 
 1. **Playable core**: fly, shoot, hit, respawn, kill count. Random name, fixed room, no polish.
 2. **Feel**: smooth remote planes, respawn delay, explosions. Tuning speeds and turn rate waits for playtesting.
-3. **Game shell**: join screen with name and colour, rooms by link, scoreboard, `meta` track.
+3. **Game shell**: join screen with name and color, rooms by link, scoreboard, `meta` track.
 4. **Extras, if they turn out to matter:** datagrams for `pos`, mobile controls, sound.

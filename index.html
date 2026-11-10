@@ -44,6 +44,9 @@
           display: block;
         }
       }
+      body:has(#join:not([hidden])) #touch {
+        display: none; /* nothing to steer until you've joined */
+      }
       #touch button {
         position: fixed;
         bottom: 24px;
@@ -88,7 +91,8 @@
         align-items: flex-start;
         gap: 8px;
       }
-      #fullscreen {
+      #fullscreen,
+      #leave {
         font: inherit;
         color: inherit;
         cursor: pointer;
@@ -97,7 +101,8 @@
         border-radius: 6px;
         padding: 4px 10px;
       }
-      #fullscreen[hidden] {
+      #fullscreen[hidden],
+      #leave[hidden] {
         display: none;
       }
       #settings {
@@ -165,8 +170,8 @@
         padding: 0;
         margin: 0;
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-wrap: nowrap; /* one row: 8 × 28px + gaps fit the form even on a phone */
+        gap: 6px;
       }
       #colors legend {
         color: #9ca3af;
@@ -175,8 +180,10 @@
       }
       #colors input {
         appearance: none;
-        width: 32px;
-        height: 32px;
+        flex: none;
+        box-sizing: border-box;
+        width: 28px;
+        height: 28px;
         margin: 0;
         border-radius: 50%;
         background: var(--c);
@@ -254,6 +261,7 @@
   <body>
     <div id="hud">Connecting…</div>
     <div id="tools">
+      <button id="leave" title="Leave the game" hidden>Leave</button>
       <button id="fullscreen" title="Full screen (F)" aria-label="Full screen">⛶</button>
       <details id="settings">
         <summary>⚙ Settings</summary>
@@ -275,7 +283,7 @@
     <form id="join">
       <h1>Dogfight</h1>
       <label>Your name <input type="text" name="name" maxlength="16" required autocomplete="nickname" /></label>
-      <fieldset id="colors"><legend>Colour</legend></fieldset>
+      <fieldset id="colors"><legend>Color</legend></fieldset>
       <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
       <p id="invite"></p>
       <button>Join</button>

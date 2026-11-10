@@ -51,7 +51,7 @@ export type EventMsg =
 export type MetaMsg = { name: string; color: string; kills: number; deaths: number }
 export const COLORS = ['#60a5fa', '#f87171', '#4ade80', '#facc15', '#c084fc', '#fb923c', '#2dd4bf', '#f472b6']
 
-/** A peer's meta as it may be shown: arbitrary bytes from the network become a short name and a palette colour. */
+/** A peer's meta as it may be shown: arbitrary bytes from the network become a short name and a palette color. */
 export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
   const name = typeof m.name === 'string' ? m.name.trim().slice(0, 16) : ''
   const n = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : 0)

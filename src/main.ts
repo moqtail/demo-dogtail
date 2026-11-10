@@ -152,7 +152,7 @@ const peers = new Map<string, { net: Plane; shown: Plane; seen: number }>()
 let booms: { x: number; y: number; age: number; big: boolean }[] = []
 const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, big })
 
-// Join screen: name, colour and room, remembered on this device. The room goes into the URL so the
+// Join screen: name, color and room, remembered on this device. The room goes into the URL so the
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
 const PROFILE_KEY = 'dogfight.profile'
@@ -166,7 +166,7 @@ const startColor = COLORS.includes(saved.color!) ? saved.color! : COLORS[Math.fl
 for (const c of COLORS) {
   const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'color', value: c })
   radio.style.setProperty('--c', c)
-  radio.setAttribute('aria-label', `colour ${COLORS.indexOf(c) + 1}`)
+  radio.setAttribute('aria-label', `color ${COLORS.indexOf(c) + 1}`)
   radio.checked = c === startColor
   document.getElementById('colors')!.append(radio)
 }
@@ -198,6 +198,11 @@ try {
 history.replaceState(null, '', roomUrl())
 const room = field('room').value.trim() || 'lobby'
 joinForm.hidden = true
+// Leave: back to the join screen (a web app on the Home Screen has no back button). Reloading
+// disconnects, and the join screen comes back with this room, name and color filled in.
+const leave = document.getElementById('leave')!
+leave.hidden = false
+leave.addEventListener('click', () => location.reload())
 hud.textContent = 'Connecting…'
 
 // Network stats panel: ?debug, the S key or Settings → Network.
@@ -308,7 +313,7 @@ function drawScene() {
   for (const b of booms) drawBoom(b)
 }
 
-/** Zoomed in: a small arrow at the screen edge toward each player out of view, in their colour. */
+/** Zoomed in: a small arrow at the screen edge toward each player out of view, in their color. */
 function drawArrows() {
   ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2) * view.s, (view.h / 2) * view.s) // origin at centre
   for (const [id, peer] of peers) {
