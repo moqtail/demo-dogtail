@@ -198,6 +198,7 @@ const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, bi
 // Join screen: name, color and room, remembered on this device. The room goes into the URL so the
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
+// Storage keys keep the game's old name, so saved profiles and settings survive the rename.
 const PROFILE_KEY = 'dogfight.profile'
 let saved: { name?: string; color?: string; pilot?: string; room?: string } = {}
 try {

@@ -84,7 +84,7 @@ export async function connect(
   const client = new MOQtailClient({ url: relayUrl, transportOptions, enableDatagrams: true })
   onClient?.(client) // listeners go on before init(), so stats see the whole session
   await client.init()
-  const roomNs = `dogfight/${room}`
+  const roomNs = `dogtail/${room}`
   const myNs = Tuple.fromUtf8Path(`${roomNs}/${me}`)
 
   const t0 = performance.now()
@@ -105,14 +105,14 @@ export async function connect(
         else if (w.t === 'meta') cb.onMeta(player, cleanMeta(w.m ?? {}))
         else cb.onEvent(player, w)
       } catch (err) {
-        console.warn('dogfight: bad object', player, err) // one bad datagram must not stop the rest
+        console.warn('dogtail: bad object', player, err) // one bad datagram must not stop the rest
       }
     }
     client.subscribeToTrackDatagrams(msg.trackAlias, onObject)
     // Objects on streams too, in case a publisher sends them that way.
     void (async () => {
       for await (const obj of stream as unknown as AsyncIterable<MoqtObject>) onObject(obj)
-    })().catch((err) => console.warn('dogfight: stream ended', player, track, err))
+    })().catch((err) => console.warn('dogtail: stream ended', player, track, err))
   })
   const { response } = await client.subscribeTracks(Tuple.fromUtf8Path(roomNs))
   if (response instanceof RequestError) throw new Error('relay rejected SUBSCRIBE_TRACKS')

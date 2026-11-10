@@ -1,4 +1,4 @@
-# Dogfight
+# DOGtail
 
 A multiplayer top-down plane shooter that runs entirely over a MOQtail relay. There is no game server.
 
@@ -25,7 +25,7 @@ To play on a local network without the public relay, run the MOQtail relay on th
 ```bash
 scripts/make-cert.sh   # cert for this machine's LAN IP, valid 13 days
 # in a moqtail checkout:
-cargo run -p relay -- --port 4433 --cert-file <dogfight>/cert/cert.pem --key-file <dogfight>/cert/key.pem
+cargo run -p relay -- --port 4433 --cert-file <dogtail>/cert/cert.pem --key-file <dogtail>/cert/key.pem
 npm run dev            # now https, and the page uses the relay on this machine
 ```
 
@@ -63,14 +63,14 @@ Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a fall
 
 All objects travel as **datagrams**; the tracks are still announced with `PUBLISH`. Safari stops granting credit for server-opened streams after a few dozen ([WebKit bug 319818](https://bugs.webkit.org/show_bug.cgi?id=319818)), so a stream per message cut iPads off within seconds. Datagrams can be lost: `pos` and `meta` repeat anyway, and a kill is sent three times with a death number that receivers count once.
 
-- Each player owns the namespace `dogfight/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es **one track**, `game`, with **one group per message**. A message is one of:
+- Each player owns the namespace `dogtail/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es **one track**, `game`, with **one group per message**. A message is one of:
   - `pos`: 10 snapshots/s. Each is self-contained; prediction and easing hide the gaps.
   - `meta`: name, color and score. Sent on join, on each score change and every 2 s, so players who join later learn who everyone is without the relay replaying old groups. Names and colors from peers are cleaned before they are shown.
   - `shot`, `hit`, `kill`: events, each standing alone.
 
   One track (not three) means the relay opens one stream per player for each subscriber, which keeps a full room of 50 under Safari's limit on server-opened streams. The group numbers let receivers count losses.
 
-- Every player sends one `SUBSCRIBE_TRACKS` on `dogfight/<room>`. The relay pushes a `PUBLISH` for every other player's tracks, both existing ones and ones published later. That handles discovery and subscribing in a single request.
+- Every player sends one `SUBSCRIBE_TRACKS` on `dogtail/<room>`. The relay pushes a `PUBLISH` for every other player's tracks, both existing ones and ones published later. That handles discovery and subscribing in a single request.
 - A player whose `pos` has been silent for 3 s is dropped.
 - Other planes are drawn where their last snapshot predicts they are now, eased toward that point so they glide instead of jumping every 50 ms.
 - A shot-down plane keeps sending `pos` with `hp` 0 for the 2 s respawn delay; that tells peers to hide it.
