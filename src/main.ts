@@ -35,6 +35,12 @@ import {
   type Bullet,
   type MetaMsg,
   type Plane,
+  type PowerUp,
+  PICKUP_RADIUS,
+  POWER_ICON,
+  powerUpsAt,
+  REACTIONS,
+  wrapDist,
 } from './game'
 import { startAnalytics } from './analytics'
 import { connect, syncClock } from './net'
@@ -64,6 +70,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Space') e.preventDefault()
   if (e.code === 'KeyF' && !e.repeat) toggleFullscreen()
   if (e.code === 'KeyM' && !e.repeat) toggleMap()
+  const r = /^Digit([1-4])$/.exec(e.code)
+  if (r && !e.repeat) react(REACTIONS[Number(r[1]) - 1]!)
 })
 addEventListener('keyup', (e) => keys.delete(e.code))
 
@@ -76,7 +84,7 @@ addEventListener('pointermove', (e) => {
   mouse = { fx: (e.clientX - r.left) / r.width, fy: (e.clientY - r.top) / r.height }
 })
 // Settings pane: one checkbox per sound. Clicks on it, or on the join screen, are not game input.
-const onSettings = (e: Event) => (e.target as Element).closest('#tools, #join') !== null
+const onSettings = (e: Event) => (e.target as Element).closest('#tools, #join, #reactions') !== null
 for (const box of document.querySelectorAll<HTMLInputElement>('#settings [data-sound]')) {
   const name = box.dataset.sound as SoundName
   box.checked = soundOn[name]
@@ -148,6 +156,35 @@ let kills = 0
 let deaths = 0
 const metas = new Map<string, MetaMsg>()
 const killsSeen = new Set<string>()
+/** The last reaction per player (`me` included), shown over their plane for REACT_SHOW ms. */
+const reactions = new Map<string, { e: string; at: number }>()
+const REACT_SHOW = 2000
+let lastReact = Infinity // no reactions until connected (set to 0 then)
+/** Power-ups on the map now; keys of ones someone grabbed; and how long yours last (s). */
+let drops: PowerUp[] = []
+const grabbed = new Set<string>()
+let armorFor = 0 // 🛡️: can't be hit; unlike the spawn shield, firing keeps it
+let rapidFor = 0 // ⚡: fires twice as fast
+const ARMOR = 5
+const RAPID = 6
+
+// Kill feed: the last few kills, top left, each fading after FEED_SHOW ms.
+const feedList = document.getElementById('feed')!
+const FEED_SHOW = 5000
+const who = (id: string) => {
+  const m = id === me ? { name: 'you', color: myColor, pilot: myPilot } : metas.get(id)
+  const span = document.createElement('span')
+  span.textContent = `${m?.pilot ? m.pilot + ' ' : ''}${m?.name ?? id}`
+  span.style.color = m?.color ?? '#9ca3af'
+  return span
+}
+function feed(killer: string, victim: string) {
+  const li = document.createElement('li')
+  li.append(who(killer), ' ✈︎💥 ', who(victim))
+  feedList.prepend(li)
+  while (feedList.children.length > 5) feedList.lastElementChild!.remove()
+  setTimeout(() => li.remove(), FEED_SHOW)
+}
 let scoreChanged = false // sends meta from the frame loop, so callbacks never run before `net` exists
 let killedBy = ''
 let deadFor = 0 // seconds until respawn; > 0 while shot down
@@ -263,6 +300,15 @@ const net = await connect(
         const key = `${id}:${m.n}`
         if (killsSeen.has(key)) return // a repeat of a kill already counted
         killsSeen.add(key)
+        feed(m.by, id)
+      }
+      if (m.t === 'react') {
+        if (REACTIONS.includes(m.e)) reactions.set(id, { e: m.e, at: performance.now() })
+        return
+      }
+      if (m.t === 'grab') {
+        if (typeof m.k === 'string' && m.k.length < 24) grabbed.add(m.k)
+        return
       }
       if (m.t === 'shot')
         bullets.push(
@@ -359,7 +405,18 @@ const JET_TOP = [
 ]
 const JET = [...JET_TOP, ...JET_TOP.map(([x, y]) => [x!, -y!]).reverse()]
 
-function drawPlane(p: Plane, color: string, label: string, pilot: string) {
+function drawPlane(p: Plane, color: string, label: string, pilot: string, id: string) {
+  const r = reactions.get(id)
+  if (r && performance.now() - r.at < REACT_SHOW) {
+    // Above the name, rising a little as it fades.
+    const t = (performance.now() - r.at) / REACT_SHOW
+    ctx.save()
+    ctx.globalAlpha = 1 - t * t
+    ctx.font = '26px system-ui'
+    ctx.textAlign = 'center'
+    ctx.fillText(r.e, p.x, p.y - 34 - t * 12)
+    ctx.restore()
+  }
   ctx.save()
   if (p.away)
     ctx.globalAlpha = 0.3 // its player is in another tab
@@ -384,6 +441,24 @@ function drawPlane(p: Plane, color: string, label: string, pilot: string) {
   ctx.restore()
 }
 
+/** Power-ups: an icon in a softly pulsing ring. */
+function drawDrops() {
+  const pulse = 1 + Math.sin(performance.now() / 200) * 0.1
+  ctx.save()
+  ctx.font = '18px system-ui'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.strokeStyle = '#fbbf24'
+  ctx.lineWidth = 2
+  for (const d of drops) {
+    ctx.beginPath()
+    ctx.arc(d.x, d.y, 16 * pulse, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.fillText(POWER_ICON[d.kind], d.x, d.y + 1)
+  }
+  ctx.restore()
+}
+
 /** Everything in the arena, in arena coordinates. */
 function drawScene() {
   ctx.fillStyle = '#0b1020'
@@ -394,13 +469,15 @@ function drawScene() {
   ctx.font = '12px system-ui'
   ctx.fillStyle = '#fbbf24'
   for (const b of bullets) ctx.fillRect(b.x - 2, b.y - 2, 4, 4)
+  drawDrops()
+  ctx.font = '12px system-ui'
   for (const [id, peer] of peers) {
     const m = metas.get(id)
     const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
-    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label, m?.pilot ?? '')
+    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label, m?.pilot ?? '', id)
   }
   if (deadFor <= 0) {
-    drawPlane(plane, myColor, 'you', myPilot)
+    drawPlane(plane, myColor, 'you', myPilot, me)
     drawPulse()
   }
   for (const b of booms) drawBoom(b)
@@ -477,6 +554,8 @@ function drawMap() {
     ctx.arc(p.x * k, p.y * k, r, 0, Math.PI * 2)
     ctx.fill()
   }
+  ctx.fillStyle = '#fbbf24'
+  for (const d of drops) ctx.fillRect(d.x * k - 1.5, d.y * k - 1.5, 3, 3)
   for (const [id, peer] of peers) {
     if (peer.shown.hp <= 0) continue
     ctx.globalAlpha = peer.shown.away ? 0.3 : 1
@@ -549,6 +628,23 @@ document.addEventListener('visibilitychange', () => {
   for (const b of document.querySelectorAll('#touch .held')) b.classList.remove('held')
 })
 
+// Reactions: keys 1–4 or the buttons; at most one a second, so nobody can flood the room.
+function react(e: string) {
+  const now = performance.now()
+  if (now - lastReact < 1000) return
+  lastReact = now
+  reactions.set(me, { e, at: now })
+  net.sendEvent({ t: 'react', e })
+}
+const reactBar = document.getElementById('reactions')!
+reactBar.hidden = false
+lastReact = 0
+for (const [i, e] of REACTIONS.entries()) {
+  const b = Object.assign(document.createElement('button'), { textContent: e, title: `${e} (${i + 1})` })
+  b.addEventListener('click', () => (b.blur(), react(e)))
+  reactBar.append(b)
+}
+
 // 10 Hz on a timer (prediction and easing hide the gaps), not in the frame loop: background tabs pause rAF but still run timers
 // (throttled to ~1 Hz), which keeps an idle player under the 3 s drop timeout.
 setInterval(() => {
@@ -575,7 +671,22 @@ function frame(now: number) {
   }
   const alive = deadFor <= 0
   shieldFor -= dt
-  plane.shielded = shieldFor > 0
+  armorFor -= dt
+  rapidFor -= dt
+  plane.shielded = shieldFor > 0 || armorFor > 0
+
+  // Power-ups: everyone derives the same drops from the shared clock; the first to touch one tells the rest.
+  // shortcut: two players touching the same drop within one network delay both get it; fine for a game.
+  drops = powerUpsAt(room, Date.now() + (clock.offset ?? 0)).filter((d) => !grabbed.has(d.key))
+  const got = alive ? drops.find((d) => wrapDist(plane.x, plane.y, d.x, d.y) < PICKUP_RADIUS) : undefined
+  if (got) {
+    grabbed.add(got.key)
+    for (let i = 0; i < 2; i++) net.sendEvent({ t: 'grab', k: got.key }) // twice: datagrams can be lost
+    if (got.kind === 'shield') armorFor = ARMOR
+    else if (got.kind === 'rapid') rapidFor = RAPID
+    else plane.hp = Math.min(plane.hp + 1, maxHpFor(peers.size + 1) + 1) // can go one over full
+    play('hit')
+  }
 
   // Zoomed in, the camera follows your plane (and stays put while you are shot down).
   const zoomed = view.w < W || view.h < H
@@ -599,7 +710,7 @@ function frame(now: number) {
     )
   cooldown -= dt
   if (alive && (keys.has('Space') || mouseFiring) && cooldown <= 0) {
-    cooldown = FIRE_COOLDOWN
+    cooldown = rapidFor > 0 ? FIRE_COOLDOWN / 2 : FIRE_COOLDOWN
     shieldFor = 0 // firing gives up the spawn shield, so it can't be used to attack safely
     const shot = { x: plane.x, y: plane.y, a: plane.a }
     bullets.push({ ...shot, age: 0, owner: me })
@@ -623,6 +734,7 @@ function frame(now: number) {
       scoreChanged = true
       deadFor = RESPAWN_DELAY // keeps sending pos with hp 0, which tells peers to hide the plane
       killedBy = metas.get(by)?.name ?? by
+      feed(by, me)
       boom(plane, true)
       play('death')
     } else {
@@ -657,8 +769,12 @@ function frame(now: number) {
   if (zoomed) drawArrows()
   if (zoomed && mapOn) drawMap()
 
+  const powers = [
+    armorFor > 0 ? ` · ${POWER_ICON.shield} ${Math.ceil(armorFor)}` : '',
+    rapidFor > 0 ? ` · ${POWER_ICON.rapid} ${Math.ceil(rapidFor)}` : '',
+  ].join('')
   const status = alive
-    ? `HP ${plane.hp}/${maxHpFor(peers.size + 1)}`
+    ? `HP ${plane.hp}/${maxHpFor(peers.size + 1)}${powers}`
     : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
   hud.textContent = `room ${room} · ${status} · players ${peers.size + 1}`
   requestAnimationFrame(frame)

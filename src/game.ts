@@ -46,6 +46,8 @@ export type EventMsg =
   | { t: 'shot'; x: number; y: number; a: number; ts?: number }
   | { t: 'hit'; by: string }
   | { t: 'kill'; by: string; n: number }
+  | { t: 'react'; e: string }
+  | { t: 'grab'; k: string }
 
 /** Who a player is and their score. */
 export type MetaMsg = { name: string; color: string; pilot: string; kills: number; deaths: number }
@@ -64,6 +66,45 @@ export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
     kills: n(m.kills),
     deaths: n(m.deaths),
   }
+}
+
+/** Quick reactions, keys 1–4: a fixed set, so nobody can show arbitrary text over other planes. */
+export const REACTIONS = ['😂', '🔥', '👋', '💢']
+
+export type PowerKind = 'shield' | 'rapid' | 'heart'
+export type PowerUp = { key: string; x: number; y: number; kind: PowerKind }
+export const POWER_ICON: Record<PowerKind, string> = { shield: '🛡️', rapid: '⚡', heart: '❤️' }
+export const POWER_SLOT = 8000 // ms between drops
+export const POWER_LIFE = 16000 // ms a drop stays if nobody grabs it
+export const POWER_PER_SLOT = 2
+export const PICKUP_RADIUS = 24
+
+/** A small seeded random generator, so every player derives the same drops. */
+function seeded(text: string) {
+  let h = 2166136261
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619)
+  return () => {
+    h = (h + 0x6d2b79f5) | 0
+    let t = Math.imul(h ^ (h >>> 15), 1 | h)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * The power-ups on the map at `now` (ms, shared clock), not counting grabbed ones. There is no server:
+ * every player derives the same drops from the room name and the time, so only grabs go on the wire.
+ */
+export function powerUpsAt(room: string, now: number): PowerUp[] {
+  const kinds: PowerKind[] = ['shield', 'rapid', 'heart']
+  const out: PowerUp[] = []
+  const last = Math.floor(now / POWER_SLOT)
+  for (let k = last - Math.ceil(POWER_LIFE / POWER_SLOT) + 1; k <= last; k++)
+    for (let i = 0; i < POWER_PER_SLOT; i++) {
+      const r = seeded(`${room}/${k}/${i}`)
+      out.push({ key: `${k}:${i}`, x: r() * W, y: r() * H, kind: kinds[Math.floor(r() * kinds.length)]! })
+    }
+  return out
 }
 
 export const wrap = (v: number, max: number) => ((v % max) + max) % max

@@ -45,6 +45,12 @@ Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where
 
 Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
 
+Small screens also get a minimap at the bottom centre (🗺 button or **M** to hide it).
+
+Reactions: **1–4** or the buttons bottom right (beside FIRE on touch) pop 😂 🔥 👋 💢 over your plane, at most one a second. The kill feed (top left) shows the last few kills.
+
+Power-ups drop every 8 s and last 16 s: 🛡️ 5 s of armour (firing keeps it), ⚡ 6 s of double fire rate, ❤️ one heart (up to one over full). There is no server: every player derives the same drops from the room name and the shared clock, and only grabs are sent, so two players touching one within a network delay may both get it.
+
 A player whose tab is in the background (or whose game has stopped drawing for half a second) shows faded and marked "(away)": the game is paused there, so the plane can't move or be hit. Coming back gives the 1.5 s spawn shield and ignores shots fired meanwhile.
 
 A respawn lands at the spot farthest from other planes (best of 12 random ones), and for 2 s rings in your color shrink onto your plane so you can find yourself in a crowd. After spawning, a plane blinks for 1.5 s and can't be hit; firing ends that early.

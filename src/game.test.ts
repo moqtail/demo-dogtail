@@ -20,6 +20,10 @@ import {
   H,
   W,
   cleanMeta,
+  powerUpsAt,
+  POWER_SLOT,
+  POWER_LIFE,
+  POWER_PER_SLOT,
   decode,
   ease,
   encode,
@@ -167,5 +171,15 @@ describe('game rules', () => {
     expect(decode<EventMsg>(encode(m))).toEqual(m)
     const pos: WireMsg = { t: 'pos', p: { x: 1, y: 2, a: 0, hp: 3 } }
     expect(decode<WireMsg>(encode(pos))).toEqual(pos)
+  })
+
+  it('derives the same power-ups for everyone in a room, from the time alone', () => {
+    const t = 1_800_000_123_456
+    const a = powerUpsAt('falcon-1', t)
+    expect(a).toEqual(powerUpsAt('falcon-1', t + 1)) // same slot, same drops
+    expect(a).toHaveLength((POWER_LIFE / POWER_SLOT) * POWER_PER_SLOT)
+    expect(a.map((p) => p.key)).not.toEqual(powerUpsAt('falcon-1', t + POWER_SLOT).map((p) => p.key)) // the oldest expires
+    expect(powerUpsAt('hawk-2', t)[0]).not.toEqual(a[0]) // other rooms differ
+    for (const p of a) expect(p.x >= 0 && p.x < 1600 && p.y >= 0 && p.y < 1000).toBe(true)
   })
 })
