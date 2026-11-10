@@ -106,6 +106,7 @@ let cooldown = 0
 let kills = 0
 let deaths = 0
 const metas = new Map<string, MetaMsg>()
+const killsSeen = new Set<string>()
 let scoreChanged = false // sends meta from the frame loop, so callbacks never run before `net` exists
 let killedBy = ''
 let deadFor = 0 // seconds until respawn; > 0 while shot down
@@ -170,6 +171,11 @@ const net = await connect(relay, room, me, __CERT_HASH__, {
     else peers.set(id, { net: p, shown: { ...p }, seen: performance.now() })
   },
   onEvent: (id, m) => {
+    if (m.t === 'kill') {
+      const key = `${id}:${m.n}`
+      if (killsSeen.has(key)) return // a repeat of a kill already counted
+      killsSeen.add(key)
+    }
     if (m.t === 'shot') bullets.push({ x: m.x, y: m.y, a: m.a, age: 0, owner: id })
     else {
       const peer = peers.get(id)
@@ -313,8 +319,9 @@ function frame(now: number) {
     plane.hp--
     net.sendEvent({ t: 'hit', by })
     if (plane.hp <= 0) {
-      net.sendEvent({ t: 'kill', by })
       deaths++
+      // Sent three times: datagrams can be lost, and receivers count each death number once.
+      for (let i = 0; i < 3; i++) net.sendEvent({ t: 'kill', by, n: deaths })
       scoreChanged = true
       deadFor = RESPAWN_DELAY // keeps sending pos with hp 0, which tells peers to hide the plane
       killedBy = metas.get(by)?.name ?? by

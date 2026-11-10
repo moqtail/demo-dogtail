@@ -38,7 +38,7 @@ export type Input = { left: boolean; right: boolean; boost: boolean; target?: nu
 /** Messages carried on the wire; `pos` track objects are PosMsg, `events` objects are EventMsg. */
 export type PosMsg = Plane
 export type EventMsg =
-  { t: 'shot'; x: number; y: number; a: number } | { t: 'hit'; by: string } | { t: 'kill'; by: string }
+  { t: 'shot'; x: number; y: number; a: number } | { t: 'hit'; by: string } | { t: 'kill'; by: string; n: number }
 
 /** Who a player is and their score, on the `meta` track. */
 export type MetaMsg = { name: string; color: string; kills: number; deaths: number }

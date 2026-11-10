@@ -24,11 +24,15 @@ export type NetCallbacks = {
   onMeta: (player: string, m: MetaMsg) => void
 }
 
-/** One outgoing track: objects go into a stream the client serves to the relay. */
+/**
+ * One outgoing track. PUBLISH announces it (that is how peers discover it), and its objects go out as
+ * datagrams, not streams: Safari stops granting credit for server-opened streams after a few dozen
+ * (WebKit bug 319818), which would cut an iPad off from everyone within seconds. Datagrams can be lost;
+ * pos and meta repeat anyway, and main.ts repeats kills.
+ */
 async function openTrack(client: MOQtailClient, ns: Tuple, name: string, priority: number) {
   const ftn = FullTrackName.tryNew(ns, name)
-  let ctrl: ReadableStreamDefaultController<MoqtObject> | null = null
-  const stream = new ReadableStream<MoqtObject>({ start: (c) => void (ctrl = c) })
+  const stream = new ReadableStream<MoqtObject>() // only backs the PUBLISH; objects go as datagrams
   client.addOrUpdateTrack({
     fullTrackName: ftn,
     trackSource: { live: new LiveTrackSource(stream) },
@@ -36,14 +40,15 @@ async function openTrack(client: MOQtailClient, ns: Tuple, name: string, priorit
   })
   const res = await client.publish(ftn, true, client.trackSources.get(ftn.toString())!.trackAlias!)
   if (res instanceof RequestError) throw new Error(`relay rejected ${name}: ${res.reasonPhrase?.phrase}`)
+  const sender = client.createDatagramSender(client.trackSources.get(ftn.toString())!.trackAlias!)
   return (group: bigint, object: bigint, payload: Uint8Array) =>
-    ctrl?.enqueue(
+    void sender.write(
       MoqtObject.newWithPayload(
         ftn,
         new Location(group, object),
         priority,
-        ObjectForwardingPreference.Subgroup,
-        0,
+        ObjectForwardingPreference.Datagram,
+        null,
         null,
         payload,
       ),
@@ -59,7 +64,7 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
         ],
       }
     : {}
-  const client = await MOQtailClient.new({ url: relayUrl, transportOptions, enableDatagrams: false })
+  const client = await MOQtailClient.new({ url: relayUrl, transportOptions, enableDatagrams: true })
   const roomNs = `dogfight/${room}`
   const myNs = Tuple.fromUtf8Path(`${roomNs}/${me}`)
 
@@ -72,13 +77,20 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
   client.onPeerPublish = (msg, stream) => {
     const player = msg.fullTrackName.namespace.toUtf8Path().split('/').filter(Boolean).pop()!
     const track = new TextDecoder().decode(msg.fullTrackName.name)
-    void (async () => {
-      for await (const obj of stream as unknown as AsyncIterable<MoqtObject>) {
-        if (!obj.payload) continue
+    const onObject = (obj: MoqtObject) => {
+      if (!obj.payload) return
+      try {
         if (track === 'pos') cb.onPos(player, decode<PosMsg>(obj.payload))
         else if (track === 'events') cb.onEvent(player, decode<EventMsg>(obj.payload))
         else if (track === 'meta') cb.onMeta(player, cleanMeta(decode<Partial<MetaMsg>>(obj.payload)))
+      } catch (err) {
+        console.warn('dogfight: bad object', player, track, err) // one bad datagram must not stop the rest
       }
+    }
+    client.subscribeToTrackDatagrams(msg.trackAlias, onObject)
+    // Objects on streams too, in case a publisher sends them that way.
+    void (async () => {
+      for await (const obj of stream as unknown as AsyncIterable<MoqtObject>) onObject(obj)
     })().catch((err) => console.warn('dogfight: stream ended', player, track, err))
   }
   const { response } = await client.subscribeTracks(Tuple.fromUtf8Path(roomNs))

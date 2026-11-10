@@ -43,6 +43,8 @@ Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a fall
 
 ## How it uses MoQ
 
+All objects travel as **datagrams**; the tracks are still announced with `PUBLISH`. Safari stops granting credit for server-opened streams after a few dozen ([WebKit bug 319818](https://bugs.webkit.org/show_bug.cgi?id=319818)), so a stream per message cut iPads off within seconds. Datagrams can be lost: `pos` and `meta` repeat anyway, and a kill is sent three times with a death number that receivers count once.
+
 - Each player owns the namespace `dogfight/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es three tracks in it:
   - `pos`: 20 snapshots/s, **one group per snapshot**. Each snapshot is self-contained, so the relay and late joiners can skip straight to the latest group.
   - `meta`: name, colour and score, **one group per update**. Sent on join, on each score change and every 2 s, so players who join later learn who everyone is without the relay having to replay old groups. Names and colours from peers are cleaned before they are shown.

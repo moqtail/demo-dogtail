@@ -101,7 +101,7 @@ describe('game rules', () => {
   })
 
   it('round-trips wire messages', () => {
-    const m: EventMsg = { t: 'kill', by: 'abc' }
+    const m: EventMsg = { t: 'kill', by: 'abc', n: 1 }
     expect(decode<EventMsg>(encode(m))).toEqual(m)
   })
 })
