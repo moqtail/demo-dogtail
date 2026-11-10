@@ -156,7 +156,7 @@ const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, bi
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
 const PROFILE_KEY = 'dogfight.profile'
-let saved: { name?: string; color?: string } = {}
+let saved: { name?: string; color?: string; room?: string } = {}
 try {
   saved = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}')
 } catch {
@@ -172,10 +172,15 @@ for (const c of COLORS) {
 }
 const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
 field('name').value = saved.name ?? ''
-field('room').value = params.get('room') ?? 'lobby'
+// Room: the link's, else the one this device last joined, else a fresh random one, so a first game
+// doesn't land in a room strangers on the public relay also default to.
+const BIRDS = ['falcon', 'hawk', 'eagle', 'raven', 'kestrel', 'osprey', 'condor', 'swift', 'merlin', 'harrier']
+const randomRoom = () => `${BIRDS[Math.floor(Math.random() * BIRDS.length)]}-${100 + Math.floor(Math.random() * 900)}`
+const defaultRoom = typeof saved.room === 'string' && saved.room.trim() ? saved.room.trim() : randomRoom()
+field('room').value = params.get('room') ?? defaultRoom
 const roomUrl = () => {
   const u = new URL(location.href)
-  u.searchParams.set('room', field('room').value.trim() || 'lobby')
+  u.searchParams.set('room', field('room').value.trim() || defaultRoom)
   return u.href
 }
 const showInvite = () => (document.getElementById('invite')!.textContent = `Invite others: ${roomUrl()}`)
@@ -188,15 +193,15 @@ await new Promise<void>((resolve) =>
     resolve()
   }),
 )
+const room = field('room').value.trim() || defaultRoom
 const myName = field('name').value.trim().slice(0, 16)
 const myColor = (joinForm.elements.namedItem('color') as RadioNodeList).value || startColor
 try {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: myName, color: myColor }))
+  localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: myName, color: myColor, room }))
 } catch {
   // Storage blocked: asked again next time.
 }
 history.replaceState(null, '', roomUrl())
-const room = field('room').value.trim() || 'lobby'
 joinForm.hidden = true
 // Leave: back to the join screen (a web app on the Home Screen has no back button). Reloading
 // disconnects, and the join screen comes back with this room, name and color filled in.

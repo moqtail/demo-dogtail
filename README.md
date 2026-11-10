@@ -16,7 +16,7 @@ npm run build      # static site in dist/
 npm run deploy     # build and upload to Cloudflare Workers (dogfight.zafergurel.com), see wrangler.jsonc
 ```
 
-Query params: `?room=<name>` (default `lobby`), `?relay=<moqt:// or https:// url>`, `?debug` (opens the network stats panel).
+Query params: `?room=<name>` (default: the room this device last joined, or a random one like `falcon-482` on a first visit), `?relay=<moqt:// or https:// url>`, `?debug` (opens the network stats panel).
 
 ### LAN play with your own relay
 
