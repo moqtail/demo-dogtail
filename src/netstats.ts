@@ -24,6 +24,9 @@ const getOr = <K, V>(m: Map<K, V>, k: K, make: () => V) => m.get(k) ?? (m.set(k,
 const total = (m: Map<string, TrackStats>, f: (t: TrackStats) => number) =>
   [...m.values()].reduce((a, t) => a + f(t), 0)
 
+/** Right-aligned in `width` characters, so columns stay put as numbers grow and shrink. */
+const col = (v: string | number, width: number) => String(v).padStart(width)
+
 /**
  * Network stats from the client's events: objects and bytes sent per track (`datagramsent`), objects,
  * loss, one-way delay and jitter per player (`datagramreceived`, with `peerpublish` naming each alias),
@@ -88,16 +91,19 @@ export function watchStats(
     }
     const sync = clock.best
     const lines = [
-      `relay rtt ${rtt === undefined ? '…' : `${Math.round(rtt)} ms`} (at join) · clock ${sync ? `${Math.round(sync.offset)} ms` : 'not synced'}`,
-      `sent ${sentRate.value.toFixed(1)} obj/s · ${(sentBytes.value / 1024).toFixed(1)} KB/s · ` +
-        [...sent].map(([n, t]) => `${n} ${t.objects}`).join(' '),
+      `relay rtt ${col(rtt === undefined ? '…' : Math.round(rtt), 4)} ms (at join) · clock ` +
+        (sync ? `${col(Math.round(sync.offset), 6)} ms` : 'not synced'),
+      `sent ${col(sentRate.value.toFixed(1), 5)} obj/s · ${col((sentBytes.value / 1024).toFixed(1), 5)} KB/s · ` +
+        [...sent].map(([n, t]) => `${n} ${col(t.objects, 6)}`).join(' '),
       ...[...peers].map(([id, p]) => {
         const lost = total(p.tracks, (t) => t.lost)
         const expected = total(p.tracks, (t) => t.objects) + lost
         return (
           `${nameOf(id).padEnd(10).slice(0, 10)} ` +
-          `delay ${p.delay === undefined ? '…' : `${Math.round(p.delay)} ms`} · jitter ${p.jitter.value.toFixed(1)} ms · ` +
-          `loss ${expected ? ((lost / expected) * 100).toFixed(1) : '0.0'}% · ${p.rate.value.toFixed(1)} obj/s`
+          `delay ${col(p.delay === undefined ? '…' : Math.round(p.delay), 4)} ms · ` +
+          `jitter ${col(p.jitter.value.toFixed(1), 5)} ms · ` +
+          `loss ${col(expected ? ((lost / expected) * 100).toFixed(1) : '0.0', 5)}% · ` +
+          `${col(p.rate.value.toFixed(1), 5)} obj/s`
         )
       }),
     ]
