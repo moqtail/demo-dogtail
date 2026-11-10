@@ -16,7 +16,7 @@ npm run build      # static site in dist/
 npm run deploy     # build and upload to Cloudflare Workers (dogfight.zafergurel.com), see wrangler.jsonc
 ```
 
-Query params: `?room=<name>` (default `lobby`), `?relay=<moqt:// or https:// url>`, `?debug` (shows this device's clock offset in the top bar).
+Query params: `?room=<name>` (default `lobby`), `?relay=<moqt:// or https:// url>`, `?debug` (opens the network stats panel).
 
 ### LAN play with your own relay
 
@@ -40,6 +40,8 @@ Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where
 Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
 
 After spawning, a plane blinks for 1.5 s and can't be hit; firing ends that early.
+
+Network stats: **S**, Settings → Network, or `?debug`. They come from moqtail-ts client events: objects and bytes sent per track (`datagramsent`), and per player the one-way delay, jitter, loss and objects per second (`datagramreceived`, with `peerpublish` naming each track). The relay round trip is timed once, on the join request.
 
 Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a falling crash when it is shot down. Each can be turned off under ⚙ Settings (top right); the choice is remembered per browser.
 

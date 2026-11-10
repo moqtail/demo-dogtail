@@ -34,6 +34,7 @@ import {
   type Plane,
 } from './game'
 import { connect, syncClock } from './net'
+import { watchStats } from './netstats'
 import { play, setSound, soundOn, type SoundName } from './sound'
 
 declare const __CERT_HASH__: string // injected by vite.config.ts
@@ -42,7 +43,7 @@ const params = new URLSearchParams(location.search)
 // With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
 const relay = params.get('relay') ?? (__CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.moqtail.dev')
 const me = Math.random().toString(16).slice(2, 8)
-const debug = params.has('debug') // ?debug: clock sync figures in the HUD
+const debug = params.has('debug') // ?debug: network stats shown from the start
 const clock = syncClock() // starts now, so it is ready by the time the player has joined
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
@@ -196,36 +197,60 @@ const room = field('room').value.trim() || 'lobby'
 joinForm.hidden = true
 hud.textContent = 'Connecting…'
 
-const net = await connect(relay, room, me, __CERT_HASH__, {
-  onPos: (id, p) => {
-    const peer = peers.get(id)
-    if (peer) Object.assign(peer, { net: p, seen: performance.now() })
-    else peers.set(id, { net: p, shown: { ...p }, seen: performance.now() })
-  },
-  onEvent: (id, m) => {
-    if (m.t === 'kill') {
-      const key = `${id}:${m.n}`
-      if (killsSeen.has(key)) return // a repeat of a kill already counted
-      killsSeen.add(key)
-    }
-    if (m.t === 'shot')
-      bullets.push(
-        ...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now(), clock.offset)),
-      )
-    else {
+// Network stats panel: ?debug, the S key or Settings → Network.
+const statsPanel = document.getElementById('stats')!
+const statsBox = document.getElementById('show-stats') as HTMLInputElement
+const showStats = (on: boolean) => {
+  statsPanel.hidden = !on
+  statsBox.checked = on
+}
+showStats(debug)
+statsBox.addEventListener('change', () => showStats(statsBox.checked))
+addEventListener('keydown', (e) => {
+  if (e.code === 'KeyS' && !e.repeat && !(e.target instanceof HTMLInputElement)) showStats(!statsBox.checked)
+})
+let stats: ReturnType<typeof watchStats> | undefined
+
+const net = await connect(
+  relay,
+  room,
+  me,
+  __CERT_HASH__,
+  {
+    onPos: (id, p) => {
+      stats?.onPos(id, p.ts)
       const peer = peers.get(id)
-      if (peer) boom(peer.shown, m.t === 'kill')
-      if (m.t === 'kill' && m.by === me) {
-        kills++
-        scoreChanged = true
+      if (peer) Object.assign(peer, { net: p, seen: performance.now() })
+      else peers.set(id, { net: p, shown: { ...p }, seen: performance.now() })
+    },
+    onEvent: (id, m) => {
+      if (m.t === 'kill') {
+        const key = `${id}:${m.n}`
+        if (killsSeen.has(key)) return // a repeat of a kill already counted
+        killsSeen.add(key)
       }
-    }
+      if (m.t === 'shot')
+        bullets.push(
+          ...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now(), clock.offset)),
+        )
+      else {
+        const peer = peers.get(id)
+        if (peer) boom(peer.shown, m.t === 'kill')
+        if (m.t === 'kill' && m.by === me) {
+          kills++
+          scoreChanged = true
+        }
+      }
+    },
+    onMeta: (id, m) => metas.set(id, m),
   },
-  onMeta: (id, m) => metas.set(id, m),
-}).catch((err) => {
+  (client) => (stats = watchStats(client, clock, (id) => metas.get(id)?.name ?? id, statsPanel)),
+).catch((err) => {
   hud.textContent = `Could not connect to ${relay}: ${err}`
   throw err
 })
+
+stats?.setRtt(net.joinRtt)
 
 function fit() {
   const s = Math.min(innerWidth / W, innerHeight / H)
@@ -305,7 +330,10 @@ setInterval(() => {
 
 // 20 Hz on a timer, not in the frame loop: background tabs pause rAF but still run timers
 // (throttled to ~1 Hz), which keeps an idle player under the 3 s drop timeout.
-setInterval(() => net.sendPos(plane), 50)
+setInterval(() => {
+  const offset = clock.offset
+  net.sendPos({ ...plane, ts: offset === undefined ? undefined : Date.now() + offset })
+}, 50)
 
 let last = performance.now()
 function frame(now: number) {
@@ -373,6 +401,7 @@ function frame(now: number) {
     if (now - peer.seen > 3000) {
       peers.delete(id)
       metas.delete(id)
+      stats?.forget(id)
     } else ease(peer.shown, predict(peer.net, (now - peer.seen) / 1000), dt)
   }
   if (scoreChanged) {
@@ -395,10 +424,7 @@ function frame(now: number) {
   for (const b of booms) drawBoom(b)
 
   const status = alive ? `HP ${plane.hp}/${MAX_HP}` : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
-  const sync = debug ? clock.best : undefined
-  hud.textContent =
-    `room ${room} · ${status} · players ${peers.size + 1}` +
-    (sync ? ` · clock ${Math.round(sync.offset)} ms (rtt ${Math.round(sync.rtt)})` : debug ? ' · clock not synced' : '')
+  hud.textContent = `room ${room} · ${status} · players ${peers.size + 1}`
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

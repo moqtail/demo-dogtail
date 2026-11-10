@@ -36,7 +36,8 @@ export type Bullet = { x: number; y: number; a: number; age: number; owner: stri
 export type Input = { left: boolean; right: boolean; boost: boolean; target?: number }
 
 /** Messages carried on the wire; `pos` track objects are PosMsg, `events` objects are EventMsg. */
-export type PosMsg = Plane
+/** `ts`: when sent, on the shared clock (net.ts syncClock), for delay and jitter stats; absent if not synced. */
+export type PosMsg = Plane & { ts?: number }
 export type EventMsg =
   /** `ts`: when fired, on the shared reference clock (net.ts syncClock); absent if not synced. */
   | { t: 'shot'; x: number; y: number; a: number; ts?: number }

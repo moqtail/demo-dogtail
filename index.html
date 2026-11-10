@@ -227,6 +227,22 @@
         justify-content: space-between;
         gap: 12px;
       }
+      #stats {
+        position: fixed;
+        top: 32px;
+        left: 12px;
+        margin: 0;
+        padding: 6px 8px;
+        background: #111827cc;
+        border-radius: 6px;
+        font:
+          12px ui-monospace,
+          monospace;
+        pointer-events: none;
+      }
+      #stats[hidden] {
+        display: none;
+      }
       #hud {
         position: fixed;
         top: 8px;
@@ -247,9 +263,14 @@
           <label><input type="checkbox" data-sound="hit" /> Getting hit</label>
           <label><input type="checkbox" data-sound="death" /> Shot down</label>
         </fieldset>
+        <fieldset>
+          <legend>Network</legend>
+          <label><input type="checkbox" id="show-stats" /> Show stats (S)</label>
+        </fieldset>
       </details>
     </div>
     <canvas id="game"></canvas>
+    <pre id="stats" hidden></pre>
     <ol id="scores" aria-label="Scoreboard"></ol>
     <form id="join">
       <h1>Dogfight</h1>

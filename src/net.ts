@@ -24,17 +24,6 @@ export type NetCallbacks = {
   onMeta: (player: string, m: MetaMsg) => void
 }
 
-// shortcut: Safari has only the newer datagrams.createWritable(), not the .writable moqtail calls;
-// drop this once moqtail falls back to createWritable() itself.
-type Duplex = { writable?: WritableStream; createWritable?: () => WritableStream }
-globalThis.WebTransport = class extends WebTransport {
-  constructor(url: string | URL, options?: WebTransportOptions) {
-    super(url, options)
-    const d = this.datagrams as unknown as Duplex
-    if (!d.writable && d.createWritable) Object.defineProperty(d, 'writable', { value: d.createWritable() })
-  }
-}
-
 /**
  * One outgoing track. PUBLISH announces it (that is how peers discover it), and its objects go out as
  * datagrams, not streams: Safari stops granting credit for server-opened streams after a few dozen
@@ -67,7 +56,14 @@ async function openTrack(client: MOQtailClient, ns: Tuple, name: string, priorit
 }
 
 /** `certHash` (hex SHA-256 of the relay cert) pins a self-signed relay cert; empty uses normal CA checks. */
-export async function connect(relayUrl: string, room: string, me: string, certHash: string, cb: NetCallbacks) {
+export async function connect(
+  relayUrl: string,
+  room: string,
+  me: string,
+  certHash: string,
+  cb: NetCallbacks,
+  onClient?: (client: MOQtailClient) => void,
+) {
   const transportOptions: WebTransportOptions = certHash
     ? {
         serverCertificateHashes: [
@@ -75,17 +71,21 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
         ],
       }
     : {}
-  const client = await MOQtailClient.new({ url: relayUrl, transportOptions, enableDatagrams: true })
+  const client = new MOQtailClient({ url: relayUrl, transportOptions, enableDatagrams: true })
+  onClient?.(client) // listeners go on before init(), so stats see the whole session
+  await client.init()
   const roomNs = `dogfight/${room}`
   const myNs = Tuple.fromUtf8Path(`${roomNs}/${me}`)
 
+  const t0 = performance.now()
   await client.publishNamespace(myNs)
+  const joinRtt = performance.now() - t0 // one request, one round trip to the relay
   const sendPosObj = await openTrack(client, myNs, 'pos', 0)
   const sendEventObj = await openTrack(client, myNs, 'events', 1)
   const sendMetaObj = await openTrack(client, myNs, 'meta', 2)
 
   // Every peer track under the room prefix, now and later, arrives here as a relay-pushed PUBLISH.
-  client.onPeerPublish = (msg, stream) => {
+  client.on('peerpublish', (msg, stream) => {
     const player = msg.fullTrackName.namespace.toUtf8Path().split('/').filter(Boolean).pop()!
     const track = new TextDecoder().decode(msg.fullTrackName.name)
     const onObject = (obj: MoqtObject) => {
@@ -103,7 +103,7 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
     void (async () => {
       for await (const obj of stream as unknown as AsyncIterable<MoqtObject>) onObject(obj)
     })().catch((err) => console.warn('dogfight: stream ended', player, track, err))
-  }
+  })
   const { response } = await client.subscribeTracks(Tuple.fromUtf8Path(roomNs))
   if (response instanceof RequestError) throw new Error('relay rejected SUBSCRIBE_TRACKS')
 
@@ -113,6 +113,7 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
   let eventGroup = 0n
   let metaGroup = 0n
   return {
+    joinRtt,
     sendPos: (m: PosMsg) => sendPosObj(posGroup++, 0n, encode(m)),
     sendEvent: (m: EventMsg) => sendEventObj(eventGroup++, 0n, encode(m)),
     sendMeta: (m: MetaMsg) => sendMetaObj(metaGroup++, 0n, encode(m)),
