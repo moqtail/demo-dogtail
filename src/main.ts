@@ -25,6 +25,8 @@ import {
   ease,
   findHit,
   predict,
+  edgePoint,
+  wrapDelta,
   shotLag,
   spawn,
   stepBullets,
@@ -62,11 +64,12 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.code))
 
 // Mouse: the plane steers toward the cursor (arena coordinates).
-let mouse: { x: number; y: number } | null = null
+/** Cursor as a fraction of the canvas; turned into arena coordinates each frame, as the camera moves. */
+let mouse: { fx: number; fy: number } | null = null
 addEventListener('pointermove', (e) => {
   if (e.pointerType !== 'mouse') return
   const r = canvas.getBoundingClientRect()
-  mouse = { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H }
+  mouse = { fx: (e.clientX - r.left) / r.width, fy: (e.clientY - r.top) / r.height }
 })
 // Settings pane: one checkbox per sound. Clicks on it, or on the join screen, are not game input.
 const onSettings = (e: Event) => (e.target as Element).closest('#tools, #join') !== null
@@ -252,24 +255,22 @@ const net = await connect(
 
 stats?.setRtt(net.joinRtt)
 
+// Screens big enough show the whole arena. On a phone that would shrink a plane to a few pixels, so
+// there the view zooms to full size and follows your plane, with arrows pointing at players off screen.
+const ZOOM_BELOW = 0.6 // arena scale under which the view zooms in
+let view = { s: 1, w: W, h: H } // canvas px per arena unit, and the arena units in view
+let cam = { x: W / 2, y: H / 2 } // arena point at the centre of the view
 function fit() {
-  const s = Math.min(innerWidth / W, innerHeight / H)
-  canvas.width = W * s
-  canvas.height = H * s
-  ctx.setTransform(s, 0, 0, s, 0, 0)
+  const fitScale = Math.min(innerWidth / W, innerHeight / H)
+  const s = fitScale >= ZOOM_BELOW ? fitScale : 1
+  view = { s, w: Math.min(W, innerWidth / s), h: Math.min(H, innerHeight / s) }
+  canvas.width = view.w * s
+  canvas.height = view.h * s
 }
 addEventListener('resize', fit)
 fit()
 
-/** Draws a plane, plus its copy on the far side while it crosses an edge, so the wrap is visible. */
 function drawPlane(p: Plane, color: string, label: string) {
-  const M = 40 // plane plus label
-  for (const x of [p.x - W, p.x, p.x + W])
-    for (const y of [p.y - H, p.y, p.y + H])
-      if (x > -M && x < W + M && y > -M && y < H + M) drawPlaneAt({ ...p, x, y }, color, label)
-}
-
-function drawPlaneAt(p: Plane, color: string, label: string) {
   ctx.save()
   if (p.away)
     ctx.globalAlpha = 0.3 // its player is in another tab
@@ -286,6 +287,48 @@ function drawPlaneAt(p: Plane, color: string, label: string) {
   ctx.lineTo(-10, 10)
   ctx.fill()
   ctx.restore()
+}
+
+/** Everything in the arena, in arena coordinates. */
+function drawScene() {
+  ctx.fillStyle = '#0b1020'
+  ctx.fillRect(0, 0, W, H)
+  ctx.strokeStyle = '#334155' // the seam where the arena wraps
+  ctx.lineWidth = 2 / view.s
+  ctx.strokeRect(0, 0, W, H)
+  ctx.font = '12px system-ui'
+  ctx.fillStyle = '#fbbf24'
+  for (const b of bullets) ctx.fillRect(b.x - 2, b.y - 2, 4, 4)
+  for (const [id, peer] of peers) {
+    const m = metas.get(id)
+    const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
+    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label)
+  }
+  if (deadFor <= 0) drawPlane(plane, myColor, 'you')
+  for (const b of booms) drawBoom(b)
+}
+
+/** Zoomed in: a small arrow at the screen edge toward each player out of view, in their colour. */
+function drawArrows() {
+  ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2) * view.s, (view.h / 2) * view.s) // origin at centre
+  for (const [id, peer] of peers) {
+    if (peer.shown.hp <= 0) continue
+    const dx = wrapDelta(cam.x, peer.shown.x, W)
+    const dy = wrapDelta(cam.y, peer.shown.y, H)
+    const at = edgePoint(dx, dy, view.w / 2, view.h / 2, 16)
+    if (!at) continue
+    ctx.save()
+    ctx.translate(at.x, at.y)
+    ctx.rotate(Math.atan2(dy, dx))
+    ctx.globalAlpha = peer.shown.away ? 0.3 : 0.9
+    ctx.fillStyle = metas.get(id)?.color ?? '#9ca3af'
+    ctx.beginPath()
+    ctx.moveTo(10, 0)
+    ctx.lineTo(-6, -7)
+    ctx.lineTo(-6, 7)
+    ctx.fill()
+    ctx.restore()
+  }
 }
 
 const BOOM_LIFE = 0.6 // s
@@ -367,6 +410,13 @@ function frame(now: number) {
   shieldFor -= dt
   plane.shielded = shieldFor > 0
 
+  // Zoomed in, the camera follows your plane (and stays put while you are shot down).
+  const zoomed = view.w < W || view.h < H
+  if (!zoomed) cam = { x: W / 2, y: H / 2 }
+  else if (alive) cam = { x: plane.x, y: plane.y }
+  const mx = cam.x + ((mouse?.fx ?? 0.5) - 0.5) * view.w
+  const my = cam.y + ((mouse?.fy ?? 0.5) - 0.5) * view.h
+
   if (alive)
     stepPlane(
       plane,
@@ -376,9 +426,7 @@ function frame(now: number) {
         boost: keys.has('KeyW') || keys.has('ArrowUp'),
         // Ignored with the cursor right on the plane, where the heading to it would jitter.
         target:
-          mouse && Math.hypot(mouse.x - plane.x, mouse.y - plane.y) > 20
-            ? Math.atan2(mouse.y - plane.y, mouse.x - plane.x)
-            : undefined,
+          mouse && Math.hypot(mx - plane.x, my - plane.y) > 20 ? Math.atan2(my - plane.y, mx - plane.x) : undefined,
       },
       dt,
     )
@@ -430,18 +478,16 @@ function frame(now: number) {
   for (const b of booms) b.age += dt
   booms = booms.filter((b) => b.age < BOOM_LIFE)
 
-  ctx.fillStyle = '#0b1020'
-  ctx.fillRect(0, 0, W, H)
-  ctx.font = '12px system-ui'
-  ctx.fillStyle = '#fbbf24'
-  for (const b of bullets) ctx.fillRect(b.x - 2, b.y - 2, 4, 4)
-  for (const [id, peer] of peers) {
-    const m = metas.get(id)
-    const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
-    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', label)
-  }
-  if (alive) drawPlane(plane, myColor, 'you')
-  for (const b of booms) drawBoom(b)
+  // The arena wraps, so the scene is drawn 3×3 times around the camera; the canvas shows what's in view.
+  ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2 - cam.x) * view.s, (view.h / 2 - cam.y) * view.s)
+  for (const ox of [-W, 0, W])
+    for (const oy of [-H, 0, H]) {
+      ctx.save()
+      ctx.translate(ox, oy)
+      drawScene()
+      ctx.restore()
+    }
+  if (zoomed) drawArrows()
 
   const status = alive ? `HP ${plane.hp}/${MAX_HP}` : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
   hud.textContent = `room ${room} · ${status} · players ${peers.size + 1}`

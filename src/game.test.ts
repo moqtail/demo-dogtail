@@ -26,6 +26,7 @@ import {
   findHit,
   ClockSync,
   clockSample,
+  edgePoint,
   predict,
   shotLag,
   stepBullets,
@@ -127,6 +128,14 @@ describe('game rules', () => {
     expect(shotLag(6000, 9000, 5000)).toBe(0.3)
     expect(shotLag(6000, 1100, undefined)).toBe(0) // offset not known yet
     expect(shotLag(undefined, 1100, 5000)).toBe(0)
+  })
+
+  it('points at off-screen players from the edge of the view', () => {
+    expect(edgePoint(10, 10, 100, 50, 5)).toBeUndefined()
+    expect(edgePoint(400, 0, 100, 50, 5)).toEqual({ x: 95, y: 0 })
+    const p = edgePoint(-300, 300, 100, 50, 5)!
+    expect(p.y).toBeCloseTo(45) // the nearer edge (top/bottom) clamps first
+    expect(p.x).toBeCloseTo(-45)
   })
 
   it('round-trips wire messages', () => {

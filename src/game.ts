@@ -86,7 +86,7 @@ export function stepPlane(p: Plane, input: Input, dt: number): void {
 }
 
 /** Signed shortest offset from `from` to `to` on a wrapping axis of length `max`. */
-const wrapDelta = (from: number, to: number, max: number) => wrap(to - from + max / 2, max) - max / 2
+export const wrapDelta = (from: number, to: number, max: number) => wrap(to - from + max / 2, max) - max / 2
 
 /**
  * Where a remote plane probably is now: its last snapshot carried forward `age` seconds along its heading.
@@ -160,6 +160,17 @@ export function shotLag(ts: number | undefined, now: number, offset: number | un
   if (ts === undefined || offset === undefined) return 0
   const lag = (now - (ts - offset)) / 1000
   return Number.isFinite(lag) ? Math.min(Math.max(lag, 0), MAX_LAG) : 0
+}
+
+/**
+ * Where to point at something off screen: `dx`,`dy` from the view's centre to it, the view's half
+ * width and height, and a margin. Returns the point on the view's edge, from the centre, or undefined
+ * when it is on screen.
+ */
+export function edgePoint(dx: number, dy: number, hw: number, hh: number, margin: number) {
+  if (Math.abs(dx) <= hw && Math.abs(dy) <= hh) return undefined
+  const t = Math.min((hw - margin) / Math.abs(dx || 1e-9), (hh - margin) / Math.abs(dy || 1e-9))
+  return { x: dx * t, y: dy * t }
 }
 
 /** Advances bullets and drops the expired ones. */

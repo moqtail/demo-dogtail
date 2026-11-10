@@ -35,7 +35,9 @@ Every player opens `https://<your-ip>:5174` and clicks through the certificate w
 
 Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: the plane steers toward the cursor, and holding the left button fires; pressing a turn key hands control back to the keyboard until the mouse moves again.
 
-Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where the browser allows. On iPhone, Safari has no fullscreen for pages: use Share → Add to Home Screen and open the game from there.
+On small screens (phones), where the whole arena would shrink planes to a few pixels, the view zooms to full size and follows your plane; arrows at the screen edge point to players out of view. Computers and tablets show the whole arena.
+
+Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where the browser allows. On iPhone, Safari has no fullscreen for pages: use Share → Add to Home Screen (keep "Open as Web App" on) and open the game from that icon; it runs without Safari's bars.
 
 Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
 
