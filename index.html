@@ -69,6 +69,7 @@
         position: fixed;
         top: 8px;
         right: 12px;
+        z-index: 2; /* opens over the scoreboard */
         background: #111827cc;
         border: 1px solid #374151;
         border-radius: 6px;
@@ -88,6 +89,112 @@
         color: #9ca3af;
         padding: 0;
         margin-bottom: 4px;
+      }
+      #join {
+        position: fixed;
+        inset: 0;
+        margin: auto;
+        width: min(340px, calc(100% - 32px));
+        height: fit-content;
+        max-height: calc(100% - 16px);
+        overflow: auto;
+        box-sizing: border-box;
+        display: grid;
+        gap: 14px;
+        padding: 20px;
+        background: #111827;
+        border: 1px solid #374151;
+        border-radius: 10px;
+        z-index: 1;
+      }
+      #join[hidden] {
+        display: none;
+      }
+      #join h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      #join label {
+        display: grid;
+        gap: 4px;
+        color: #9ca3af;
+      }
+      #join input[type='text'] {
+        font: 16px system-ui; /* 16px or more: iPad Safari zooms into smaller inputs */
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #374151;
+        background: #0b1020;
+        color: #e5e7eb;
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      #colors {
+        border: 0;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      #colors legend {
+        color: #9ca3af;
+        padding: 0;
+        margin-bottom: 4px;
+      }
+      #colors input {
+        appearance: none;
+        width: 32px;
+        height: 32px;
+        margin: 0;
+        border-radius: 50%;
+        background: var(--c);
+        border: 3px solid transparent;
+        cursor: pointer;
+      }
+      #colors input:checked {
+        border-color: #f9fafb;
+      }
+      #colors input:focus-visible {
+        outline: 2px solid #f9fafb;
+        outline-offset: 2px;
+      }
+      #invite {
+        margin: 0;
+        color: #9ca3af;
+        font-size: 13px;
+        word-break: break-all;
+      }
+      #join button {
+        font: bold 16px system-ui;
+        padding: 10px;
+        border: 0;
+        border-radius: 6px;
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+      }
+      #scores {
+        position: fixed;
+        top: 48px;
+        right: 12px;
+        margin: 0;
+        padding: 6px 10px;
+        list-style: none;
+        background: #111827aa;
+        border-radius: 6px;
+        font-size: 13px;
+        display: grid;
+        gap: 2px;
+        min-width: 140px;
+      }
+      #scores:empty {
+        display: none;
+      }
+      #scores li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
       }
       #hud {
         position: fixed;
@@ -109,6 +216,15 @@
       </fieldset>
     </details>
     <canvas id="game"></canvas>
+    <ol id="scores" aria-label="Scoreboard"></ol>
+    <form id="join">
+      <h1>Dogfight</h1>
+      <label>Your name <input type="text" name="name" maxlength="16" required autocomplete="nickname" /></label>
+      <fieldset id="colors"><legend>Colour</legend></fieldset>
+      <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
+      <p id="invite"></p>
+      <button>Join</button>
+    </form>
     <div id="touch">
       <button data-key="KeyA" aria-label="Turn left">◀</button>
       <button data-key="KeyD" aria-label="Turn right">▶</button>

@@ -16,11 +16,12 @@
 
 import { LiveTrackSource, MOQtailClient } from 'moqtail/client'
 import { FullTrackName, Location, MoqtObject, ObjectForwardingPreference, RequestError, Tuple } from 'moqtail/model'
-import { decode, encode, type EventMsg, type PosMsg } from './game'
+import { cleanMeta, decode, encode, type EventMsg, type MetaMsg, type PosMsg } from './game'
 
 export type NetCallbacks = {
   onPos: (player: string, m: PosMsg) => void
   onEvent: (player: string, m: EventMsg) => void
+  onMeta: (player: string, m: MetaMsg) => void
 }
 
 /** One outgoing track: objects go into a stream the client serves to the relay. */
@@ -65,6 +66,7 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
   await client.publishNamespace(myNs)
   const sendPosObj = await openTrack(client, myNs, 'pos', 0)
   const sendEventObj = await openTrack(client, myNs, 'events', 1)
+  const sendMetaObj = await openTrack(client, myNs, 'meta', 2)
 
   // Every peer track under the room prefix, now and later, arrives here as a relay-pushed PUBLISH.
   client.onPeerPublish = (msg, stream) => {
@@ -75,18 +77,21 @@ export async function connect(relayUrl: string, room: string, me: string, certHa
         if (!obj.payload) continue
         if (track === 'pos') cb.onPos(player, decode<PosMsg>(obj.payload))
         else if (track === 'events') cb.onEvent(player, decode<EventMsg>(obj.payload))
+        else if (track === 'meta') cb.onMeta(player, cleanMeta(decode<Partial<MetaMsg>>(obj.payload)))
       }
     })().catch((err) => console.warn('dogfight: stream ended', player, track, err))
   }
   const { response } = await client.subscribeTracks(Tuple.fromUtf8Path(roomNs))
   if (response instanceof RequestError) throw new Error('relay rejected SUBSCRIBE_TRACKS')
 
-  // One group per message on both tracks: each snapshot and each event stands alone, so a
+  // One group per message on every track: each snapshot, event and meta stands alone, so a
   // subscriber that joins late, or a stream the relay stops, loses at most that one message.
   let posGroup = 0n
   let eventGroup = 0n
+  let metaGroup = 0n
   return {
     sendPos: (m: PosMsg) => sendPosObj(posGroup++, 0n, encode(m)),
     sendEvent: (m: EventMsg) => sendEventObj(eventGroup++, 0n, encode(m)),
+    sendMeta: (m: MetaMsg) => sendMetaObj(metaGroup++, 0n, encode(m)),
   }
 }

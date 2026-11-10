@@ -15,6 +15,7 @@
  */
 
 import {
+  COLORS,
   FIRE_COOLDOWN,
   H,
   MAX_HP,
@@ -27,6 +28,7 @@ import {
   stepBullets,
   stepPlane,
   type Bullet,
+  type MetaMsg,
   type Plane,
 } from './game'
 import { connect } from './net'
@@ -35,7 +37,6 @@ import { play, setSound, soundOn, type SoundName } from './sound'
 declare const __CERT_HASH__: string // injected by vite.config.ts
 
 const params = new URLSearchParams(location.search)
-const room = params.get('room') ?? 'lobby'
 const relay = params.get('relay') ?? `moqt://${location.hostname}:4433`
 const me = Math.random().toString(16).slice(2, 8)
 
@@ -46,6 +47,7 @@ const hud = document.getElementById('hud')!
 const TURN_KEYS = ['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight']
 const keys = new Set<string>()
 addEventListener('keydown', (e) => {
+  if (e.target instanceof HTMLInputElement) return // typing a name is not flying
   keys.add(e.code)
   if (TURN_KEYS.includes(e.code)) mouse = null // keyboard takes over until the mouse moves again
   if (e.code === 'Space') e.preventDefault()
@@ -59,8 +61,8 @@ addEventListener('pointermove', (e) => {
   const r = canvas.getBoundingClientRect()
   mouse = { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H }
 })
-// Settings pane: one checkbox per sound. Clicks on it are not game input.
-const onSettings = (e: Event) => (e.target as Element).closest('#settings') !== null
+// Settings pane: one checkbox per sound. Clicks on it, or on the join screen, are not game input.
+const onSettings = (e: Event) => (e.target as Element).closest('#settings, #join') !== null
 for (const box of document.querySelectorAll<HTMLInputElement>('#settings [data-sound]')) {
   const name = box.dataset.sound as SoundName
   box.checked = soundOn[name]
@@ -100,6 +102,8 @@ let bullets: Bullet[] = []
 let cooldown = 0
 let kills = 0
 let deaths = 0
+const metas = new Map<string, MetaMsg>()
+let scoreChanged = false // sends meta from the frame loop, so callbacks never run before `net` exists
 let killedBy = ''
 let deadFor = 0 // seconds until respawn; > 0 while shot down
 /** `net` is the last snapshot, `shown` the eased plane that is drawn. */
@@ -107,6 +111,54 @@ const peers = new Map<string, { net: Plane; shown: Plane; seen: number }>()
 /** Explosion effects: a big one when a plane is shot down, a small one on a hit. */
 let booms: { x: number; y: number; age: number; big: boolean }[] = []
 const boom = (p: Plane, big: boolean) => booms.push({ x: p.x, y: p.y, age: 0, big })
+
+// Join screen: name, colour and room, remembered on this device. The room goes into the URL so the
+// address bar is the invite link.
+const joinForm = document.getElementById('join') as HTMLFormElement
+const PROFILE_KEY = 'dogfight.profile'
+let saved: { name?: string; color?: string } = {}
+try {
+  saved = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}')
+} catch {
+  // Storage blocked or corrupt: start blank.
+}
+const startColor = COLORS.includes(saved.color!) ? saved.color! : COLORS[Math.floor(Math.random() * COLORS.length)]!
+for (const c of COLORS) {
+  const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'color', value: c })
+  radio.style.setProperty('--c', c)
+  radio.setAttribute('aria-label', `colour ${COLORS.indexOf(c) + 1}`)
+  radio.checked = c === startColor
+  document.getElementById('colors')!.append(radio)
+}
+const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
+field('name').value = saved.name ?? ''
+field('room').value = params.get('room') ?? 'lobby'
+const roomUrl = () => {
+  const u = new URL(location.href)
+  u.searchParams.set('room', field('room').value.trim() || 'lobby')
+  return u.href
+}
+const showInvite = () => (document.getElementById('invite')!.textContent = `Invite others: ${roomUrl()}`)
+field('room').addEventListener('input', showInvite)
+showInvite()
+hud.textContent = ''
+await new Promise<void>((resolve) =>
+  joinForm.addEventListener('submit', (e) => {
+    e.preventDefault()
+    resolve()
+  }),
+)
+const myName = field('name').value.trim().slice(0, 16)
+const myColor = (joinForm.elements.namedItem('color') as RadioNodeList).value || startColor
+try {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify({ name: myName, color: myColor }))
+} catch {
+  // Storage blocked: asked again next time.
+}
+history.replaceState(null, '', roomUrl())
+const room = field('room').value.trim() || 'lobby'
+joinForm.hidden = true
+hud.textContent = 'Connecting…'
 
 const net = await connect(relay, room, me, __CERT_HASH__, {
   onPos: (id, p) => {
@@ -119,9 +171,13 @@ const net = await connect(relay, room, me, __CERT_HASH__, {
     else {
       const peer = peers.get(id)
       if (peer) boom(peer.shown, m.t === 'kill')
-      if (m.t === 'kill' && m.by === me) kills++
+      if (m.t === 'kill' && m.by === me) {
+        kills++
+        scoreChanged = true
+      }
     }
   },
+  onMeta: (id, m) => metas.set(id, m),
 }).catch((err) => {
   hud.textContent = `Could not connect to ${relay}: ${err}`
   throw err
@@ -178,6 +234,30 @@ function drawBoom(b: { x: number; y: number; age: number; big: boolean }) {
   ctx.globalAlpha = 1
 }
 
+// Meta goes out on join, on every score change and every 2 s: the repeats reach players who join
+// later without relying on the relay to replay an old group.
+const sendMeta = () => net.sendMeta({ name: myName, color: myColor, kills, deaths })
+sendMeta()
+setInterval(sendMeta, 2000)
+
+// Scoreboard, best first. 4 Hz is plenty for text and keeps DOM work out of the frame loop.
+const scores = document.getElementById('scores')!
+setInterval(() => {
+  const rows = [
+    { name: `${myName} (you)`, color: myColor, kills, deaths },
+    ...[...peers.keys()].map((id) => metas.get(id) ?? { name: id, color: '#9ca3af', kills: 0, deaths: 0 }),
+  ].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)
+  scores.replaceChildren(
+    ...rows.map((r) => {
+      const li = document.createElement('li')
+      const name = Object.assign(document.createElement('span'), { textContent: r.name })
+      name.style.color = r.color
+      li.append(name, Object.assign(document.createElement('span'), { textContent: `${r.kills} / ${r.deaths}` }))
+      return li
+    }),
+  )
+}, 250)
+
 // 20 Hz on a timer, not in the frame loop: background tabs pause rAF but still run timers
 // (throttled to ~1 Hz), which keeps an idle player under the 3 s drop timeout.
 setInterval(() => net.sendPos(plane), 50)
@@ -225,8 +305,9 @@ function frame(now: number) {
     if (plane.hp <= 0) {
       net.sendEvent({ t: 'kill', by })
       deaths++
+      scoreChanged = true
       deadFor = RESPAWN_DELAY // keeps sending pos with hp 0, which tells peers to hide the plane
-      killedBy = by
+      killedBy = metas.get(by)?.name ?? by
       boom(plane, true)
       play('death')
     } else {
@@ -236,8 +317,14 @@ function frame(now: number) {
   }
 
   for (const [id, peer] of peers) {
-    if (now - peer.seen > 3000) peers.delete(id)
-    else ease(peer.shown, predict(peer.net, (now - peer.seen) / 1000), dt)
+    if (now - peer.seen > 3000) {
+      peers.delete(id)
+      metas.delete(id)
+    } else ease(peer.shown, predict(peer.net, (now - peer.seen) / 1000), dt)
+  }
+  if (scoreChanged) {
+    scoreChanged = false
+    sendMeta()
   }
   for (const b of booms) b.age += dt
   booms = booms.filter((b) => b.age < BOOM_LIFE)
@@ -247,12 +334,15 @@ function frame(now: number) {
   ctx.font = '12px system-ui'
   ctx.fillStyle = '#fbbf24'
   for (const b of bullets) ctx.fillRect(b.x - 2, b.y - 2, 4, 4)
-  for (const [id, peer] of peers) if (peer.shown.hp > 0) drawPlane(peer.shown, '#f87171', id)
-  if (alive) drawPlane(plane, '#60a5fa', 'you')
+  for (const [id, peer] of peers) {
+    const m = metas.get(id)
+    if (peer.shown.hp > 0) drawPlane(peer.shown, m?.color ?? '#9ca3af', m?.name ?? id)
+  }
+  if (alive) drawPlane(plane, myColor, 'you')
   for (const b of booms) drawBoom(b)
 
   const status = alive ? `HP ${plane.hp}/${MAX_HP}` : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
-  hud.textContent = `room ${room} · you ${me} · ${status} · kills ${kills} · deaths ${deaths} · players ${peers.size + 1}`
+  hud.textContent = `room ${room} · ${status} · players ${peers.size + 1}`
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

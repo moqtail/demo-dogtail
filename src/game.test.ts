@@ -19,6 +19,7 @@ import {
   BULLET_LIFE,
   H,
   W,
+  cleanMeta,
   decode,
   ease,
   encode,
@@ -86,6 +87,16 @@ describe('game rules', () => {
   it('predicts along the heading, capped for stale snapshots', () => {
     expect(predict({ x: 100, y: 100, a: 0, hp: 3 }, 0.1).x).toBeCloseTo(118)
     expect(predict({ x: 100, y: 100, a: 0, hp: 3 }, 5).x).toBeCloseTo(145)
+  })
+
+  it('cleans peer meta before it is shown', () => {
+    expect(cleanMeta({ name: '  a very long name indeed  ', color: 'url(x)', kills: -1, deaths: 2 })).toEqual({
+      name: 'a very long name',
+      color: '#9ca3af',
+      kills: 0,
+      deaths: 2,
+    })
+    expect(cleanMeta({}).name).toBe('?')
   })
 
   it('round-trips wire messages', () => {

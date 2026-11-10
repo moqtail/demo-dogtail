@@ -10,7 +10,9 @@ cargo run -p relay -- --port 4433 --cert-file apps/dogfight/cert/cert.pem --key-
 npm --prefix apps/dogfight run dev
 ```
 
-Every player, on this machine or another device on the LAN, opens `https://<your-ip>:5174`. The browser warns about the page's self-signed certificate once; choose Advanced → Proceed. Nothing needs to be installed on any device. Optional query params: `?room=<name>` (default `lobby`), `?relay=<url>` (default: the host that served the page, port 4433).
+Every player, on this machine or another device on the LAN, opens `https://<your-ip>:5174`. The browser warns about the page's self-signed certificate once; choose Advanced → Proceed. Nothing needs to be installed on any device. A join screen asks for a name, a colour and a room; it shows the invite link for that room, and the address bar carries it once you join. Name and colour are remembered per device. Optional query params: `?room=<name>` (default `lobby`), `?relay=<url>` (default: the host that served the page, port 4433).
+
+The scoreboard at the top right lists everyone's kills / deaths.
 
 Controls: keyboard as below. On a touchscreen, on-screen buttons appear: ◀ ▶ bottom left for your left thumb, FIRE bottom right for your right.
 
@@ -22,8 +24,9 @@ Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a fall
 
 ## How it uses MoQ
 
-- Each player owns the namespace `dogfight/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es two tracks in it:
+- Each player owns the namespace `dogfight/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es three tracks in it:
   - `pos`: 20 snapshots/s, **one group per snapshot**. Each snapshot is self-contained, so the relay and late joiners can skip straight to the latest group.
+  - `meta`: name, colour and score, **one group per update**. Sent on join, on each score change and every 2 s, so players who join later learn who everyone is without the relay having to replay old groups. Names and colours from peers are cleaned before they are shown.
   - `events`: shots, hits and kills, **one group per event**. Events are independent, so a late joiner or a stream the relay stops loses at most one event. An earlier version used one group per life, but then a single stopped stream dropped every shot for the rest of that life.
 - Every player sends one `SUBSCRIBE_TRACKS` on `dogfight/<room>`. The relay pushes a `PUBLISH` for every other player's tracks, both existing ones and ones published later. That handles discovery and subscribing in a single request.
 - A player whose `pos` has been silent for 3 s is dropped.
@@ -34,6 +37,6 @@ Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a fall
 ## Plan (iterative)
 
 1. **Playable core**: fly, shoot, hit, respawn, kill count. Random name, fixed room, no polish.
-2. **Feel** (this iteration): smooth remote planes, respawn delay, explosions. Tuning speeds and turn rate waits for playtesting.
-3. **Game shell:** join screen with name and colour, rooms by link, scoreboard, `meta` track for names.
+2. **Feel**: smooth remote planes, respawn delay, explosions. Tuning speeds and turn rate waits for playtesting.
+3. **Game shell** (this iteration): join screen with name and colour, rooms by link, scoreboard, `meta` track.
 4. **Extras, if they turn out to matter:** datagrams for `pos`, mobile controls, sound.

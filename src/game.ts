@@ -38,6 +38,22 @@ export type PosMsg = Plane
 export type EventMsg =
   { t: 'shot'; x: number; y: number; a: number } | { t: 'hit'; by: string } | { t: 'kill'; by: string }
 
+/** Who a player is and their score, on the `meta` track. */
+export type MetaMsg = { name: string; color: string; kills: number; deaths: number }
+export const COLORS = ['#60a5fa', '#f87171', '#4ade80', '#facc15', '#c084fc', '#fb923c', '#2dd4bf', '#f472b6']
+
+/** A peer's meta as it may be shown: arbitrary bytes from the network become a short name and a palette colour. */
+export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
+  const name = typeof m.name === 'string' ? m.name.trim().slice(0, 16) : ''
+  const n = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 ? (v as number) : 0)
+  return {
+    name: name || '?',
+    color: COLORS.includes(m.color as string) ? (m.color as string) : '#9ca3af',
+    kills: n(m.kills),
+    deaths: n(m.deaths),
+  }
+}
+
 export const wrap = (v: number, max: number) => ((v % max) + max) % max
 
 export function spawn(): Plane {
@@ -112,5 +128,5 @@ export function findHit(p: Plane, self: string, bullets: Bullet[]): number {
 
 const enc = new TextEncoder()
 const dec = new TextDecoder()
-export const encode = (m: PosMsg | EventMsg): Uint8Array => enc.encode(JSON.stringify(m))
+export const encode = (m: PosMsg | EventMsg | MetaMsg): Uint8Array => enc.encode(JSON.stringify(m))
 export const decode = <T>(b: Uint8Array): T => JSON.parse(dec.decode(b)) as T
