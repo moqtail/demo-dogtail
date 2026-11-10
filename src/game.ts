@@ -26,9 +26,11 @@ export const BULLET_LIFE = 1.2 // s
 export const FIRE_COOLDOWN = 0.2 // s
 export const HIT_RADIUS = 14
 export const MAX_HP = 3
+export const SPAWN_SHIELD = 1.5 // s after spawning that a plane can't be hit, unless it fires
 export const RESPAWN_DELAY = 2 // s; must stay under the 3 s silence after which peers drop a player
 
-export type Plane = { x: number; y: number; a: number; hp: number }
+/** `shielded`: just spawned and can't be hit; sent in `pos` so everyone sees it blink. */
+export type Plane = { x: number; y: number; a: number; hp: number; shielded?: boolean }
 export type Bullet = { x: number; y: number; a: number; age: number; owner: string }
 /** `target` is a heading (rad) to steer toward, e.g. from the mouse; it is used when no turn key is held. */
 export type Input = { left: boolean; right: boolean; boost: boolean; target?: number }
@@ -102,6 +104,7 @@ export function ease(shown: Plane, target: Plane, dt: number): void {
     shown.a += Math.atan2(Math.sin(target.a - shown.a), Math.cos(target.a - shown.a)) * k
   }
   shown.hp = target.hp
+  shown.shielded = target.shielded
 }
 
 /** Advances bullets and drops the expired ones. */
@@ -121,8 +124,9 @@ export function wrapDist(ax: number, ay: number, bx: number, by: number): number
   return Math.hypot(Math.min(dx, W - dx), Math.min(dy, H - dy))
 }
 
-/** Index of the first bullet not fired by `self` that hits `p`, or -1. */
+/** Index of the first bullet not fired by `self` that hits `p`, or -1. A shielded plane can't be hit. */
 export function findHit(p: Plane, self: string, bullets: Bullet[]): number {
+  if (p.shielded) return -1
   return bullets.findIndex((b) => b.owner !== self && wrapDist(p.x, p.y, b.x, b.y) < HIT_RADIUS)
 }
 

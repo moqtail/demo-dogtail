@@ -20,6 +20,7 @@ import {
   H,
   MAX_HP,
   RESPAWN_DELAY,
+  SPAWN_SHIELD,
   W,
   ease,
   findHit,
@@ -99,6 +100,7 @@ for (const btn of document.querySelectorAll<HTMLElement>('#touch [data-key]')) {
 }
 
 let plane: Plane = spawn()
+let shieldFor = SPAWN_SHIELD
 let bullets: Bullet[] = []
 let cooldown = 0
 let kills = 0
@@ -203,6 +205,7 @@ function drawPlane(p: Plane, color: string, label: string) {
 
 function drawPlaneAt(p: Plane, color: string, label: string) {
   ctx.save()
+  if (p.shielded && performance.now() % 300 < 150) ctx.globalAlpha = 0.3 // blinks while it can't be hit
   ctx.translate(p.x, p.y)
   ctx.fillStyle = '#e5e7eb'
   ctx.fillText(`${label} ${'♥'.repeat(p.hp)}`, -20, -22)
@@ -268,8 +271,13 @@ function frame(now: number) {
   const dt = Math.min((now - last) / 1000, 0.1)
   last = now
 
-  if (deadFor > 0 && (deadFor -= dt) <= 0) plane = spawn()
+  if (deadFor > 0 && (deadFor -= dt) <= 0) {
+    plane = spawn()
+    shieldFor = SPAWN_SHIELD
+  }
   const alive = deadFor <= 0
+  shieldFor -= dt
+  plane.shielded = shieldFor > 0
 
   if (alive)
     stepPlane(
@@ -289,6 +297,7 @@ function frame(now: number) {
   cooldown -= dt
   if (alive && (keys.has('Space') || mouseFiring) && cooldown <= 0) {
     cooldown = FIRE_COOLDOWN
+    shieldFor = 0 // firing gives up the spawn shield, so it can't be used to attack safely
     const shot = { x: plane.x, y: plane.y, a: plane.a }
     bullets.push({ ...shot, age: 0, owner: me })
     net.sendEvent({ t: 'shot', ...shot })

@@ -64,6 +64,7 @@ describe('game rules', () => {
     const enemy: Bullet = { x: 105, y: 100, a: 0, age: 0, owner: 'them' }
     expect(findHit(p, 'me', [own])).toBe(-1)
     expect(findHit(p, 'me', [own, enemy])).toBe(1)
+    expect(findHit({ ...p, shielded: true }, 'me', [own, enemy])).toBe(-1)
   })
 
   it('expires bullets', () => {
