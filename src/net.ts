@@ -16,7 +16,17 @@
 
 import { LiveTrackSource, MOQtailClient } from 'moqtail/client'
 import { FullTrackName, Location, MoqtObject, ObjectForwardingPreference, RequestError, Tuple } from 'moqtail/model'
-import { ClockSync, cleanMeta, clockSample, decode, encode, type EventMsg, type MetaMsg, type PosMsg } from './game'
+import {
+  ClockSync,
+  cleanMeta,
+  clockSample,
+  decode,
+  encode,
+  type EventMsg,
+  type MetaMsg,
+  type PosMsg,
+  type WireMsg,
+} from './game'
 
 export type NetCallbacks = {
   onPos: (player: string, m: PosMsg) => void
@@ -80,22 +90,22 @@ export async function connect(
   const t0 = performance.now()
   await client.publishNamespace(myNs)
   const joinRtt = performance.now() - t0 // one request, one round trip to the relay
-  const sendPosObj = await openTrack(client, myNs, 'pos', 0)
-  const sendEventObj = await openTrack(client, myNs, 'events', 1)
-  const sendMetaObj = await openTrack(client, myNs, 'meta', 2)
+  const sendObj = await openTrack(client, myNs, 'game', 0)
 
   // Every peer track under the room prefix, now and later, arrives here as a relay-pushed PUBLISH.
   client.on('peerpublish', (msg, stream) => {
     const player = msg.fullTrackName.namespace.toUtf8Path().split('/').filter(Boolean).pop()!
     const track = new TextDecoder().decode(msg.fullTrackName.name)
+    if (track !== 'game') return // e.g. a player on an older version, which had three tracks
     const onObject = (obj: MoqtObject) => {
       if (!obj.payload) return
       try {
-        if (track === 'pos') cb.onPos(player, decode<PosMsg>(obj.payload))
-        else if (track === 'events') cb.onEvent(player, decode<EventMsg>(obj.payload))
-        else if (track === 'meta') cb.onMeta(player, cleanMeta(decode<Partial<MetaMsg>>(obj.payload)))
+        const w = decode<WireMsg>(obj.payload)
+        if (w.t === 'pos') cb.onPos(player, w.p)
+        else if (w.t === 'meta') cb.onMeta(player, cleanMeta(w.m ?? {}))
+        else cb.onEvent(player, w)
       } catch (err) {
-        console.warn('dogfight: bad object', player, track, err) // one bad datagram must not stop the rest
+        console.warn('dogfight: bad object', player, err) // one bad datagram must not stop the rest
       }
     }
     client.subscribeToTrackDatagrams(msg.trackAlias, onObject)
@@ -107,16 +117,14 @@ export async function connect(
   const { response } = await client.subscribeTracks(Tuple.fromUtf8Path(roomNs))
   if (response instanceof RequestError) throw new Error('relay rejected SUBSCRIBE_TRACKS')
 
-  // One group per message on every track: each snapshot, event and meta stands alone, so a
-  // subscriber that joins late, or a stream the relay stops, loses at most that one message.
-  let posGroup = 0n
-  let eventGroup = 0n
-  let metaGroup = 0n
+  // One group per message: each stands alone, and the group numbers let receivers count losses.
+  let group = 0n
+  const send = (w: WireMsg) => sendObj(group++, 0n, encode(w))
   return {
     joinRtt,
-    sendPos: (m: PosMsg) => sendPosObj(posGroup++, 0n, encode(m)),
-    sendEvent: (m: EventMsg) => sendEventObj(eventGroup++, 0n, encode(m)),
-    sendMeta: (m: MetaMsg) => sendMetaObj(metaGroup++, 0n, encode(m)),
+    sendPos: (p: PosMsg) => send({ t: 'pos', p }),
+    sendEvent: (m: EventMsg) => send(m),
+    sendMeta: (m: MetaMsg) => send({ t: 'meta', m }),
   }
 }
 

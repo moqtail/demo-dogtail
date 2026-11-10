@@ -197,6 +197,13 @@
         outline: 2px solid #f9fafb;
         outline-offset: 2px;
       }
+      #notice {
+        margin: 0;
+        color: #fbbf24;
+      }
+      #notice:empty {
+        display: none;
+      }
       #invite {
         margin: 0;
         color: #9ca3af;
@@ -294,6 +301,7 @@
       <label>Your name <input type="text" name="name" maxlength="16" required autocomplete="nickname" /></label>
       <fieldset id="colors"><legend>Color</legend></fieldset>
       <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
+      <p id="notice"></p>
       <p id="invite"></p>
       <button>Join</button>
       <p id="powered">Powered by <a href="https://moqtail.dev" target="_blank" rel="noopener">MOQtail</a></p>

@@ -37,6 +37,8 @@ Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: t
 
 On small screens (phones), where the whole arena would shrink planes to a few pixels, the view zooms to full size and follows your plane; arrows at the screen edge point to players out of view. Computers and tablets show the whole arena.
 
+The scoreboard (top right) shows the top 10 by kills / deaths, plus your own rank if you are further down. A room holds 50 players; joining a full one sends you back to the join screen with a fresh room.
+
 **Leave** (top right) goes back to the join screen to change room, name or color; on the iPhone Home Screen app there is no back button otherwise.
 
 Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where the browser allows. On iPhone, Safari has no fullscreen for pages: use Share → Add to Home Screen (keep "Open as Web App" on) and open the game from that icon; it runs without Safari's bars.
@@ -55,10 +57,13 @@ Sounds: a quiet chirp when you fire, a short blip when your plane is hit, a fall
 
 All objects travel as **datagrams**; the tracks are still announced with `PUBLISH`. Safari stops granting credit for server-opened streams after a few dozen ([WebKit bug 319818](https://bugs.webkit.org/show_bug.cgi?id=319818)), so a stream per message cut iPads off within seconds. Datagrams can be lost: `pos` and `meta` repeat anyway, and a kill is sent three times with a death number that receivers count once.
 
-- Each player owns the namespace `dogfight/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es three tracks in it:
-  - `pos`: 20 snapshots/s, **one group per snapshot**. Each snapshot is self-contained, so the relay and late joiners can skip straight to the latest group.
-  - `meta`: name, color and score, **one group per update**. Sent on join, on each score change and every 2 s, so players who join later learn who everyone is without the relay having to replay old groups. Names and colors from peers are cleaned before they are shown.
-  - `events`: shots, hits and kills, **one group per event**. Events are independent, so a late joiner or a stream the relay stops loses at most one event. An earlier version used one group per life, but then a single stopped stream dropped every shot for the rest of that life.
+- Each player owns the namespace `dogfight/<room>/<playerId>` (`PUBLISH_NAMESPACE`) and `PUBLISH`es **one track**, `game`, with **one group per message**. A message is one of:
+  - `pos`: 10 snapshots/s. Each is self-contained; prediction and easing hide the gaps.
+  - `meta`: name, color and score. Sent on join, on each score change and every 2 s, so players who join later learn who everyone is without the relay replaying old groups. Names and colors from peers are cleaned before they are shown.
+  - `shot`, `hit`, `kill`: events, each standing alone.
+
+  One track (not three) means the relay opens one stream per player for each subscriber, which keeps a full room of 50 under Safari's limit on server-opened streams. The group numbers let receivers count losses.
+
 - Every player sends one `SUBSCRIBE_TRACKS` on `dogfight/<room>`. The relay pushes a `PUBLISH` for every other player's tracks, both existing ones and ones published later. That handles discovery and subscribing in a single request.
 - A player whose `pos` has been silent for 3 s is dropped.
 - Other planes are drawn where their last snapshot predicts they are now, eased toward that point so they glide instead of jumping every 50 ms.
@@ -72,3 +77,14 @@ All objects travel as **datagrams**; the tracks are still announced with `PUBLIS
 2. **Feel**: smooth remote planes, respawn delay, explosions. Tuning speeds and turn rate waits for playtesting.
 3. **Game shell**: join screen with name and color, rooms by link, scoreboard, `meta` track.
 4. **Extras, if they turn out to matter:** datagrams for `pos`, mobile controls, sound.
+
+## Load test
+
+`bots.html` (dev server only, not deployed) runs bots that each join as a full player on their own connection: pos at 10 Hz, meta every 2 s, about one shot a second, and their own hit detection, so you can shoot them down. Run them in headless Chrome, which doesn't throttle them like a background tab would:
+
+```bash
+npm run dev                         # in one terminal
+npm run bots -- <room> <count>      # in another; Ctrl-C stops them
+```
+
+Then join `<room>` from the game with `?debug` to see delay, jitter and loss per player.

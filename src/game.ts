@@ -38,7 +38,7 @@ export type Bullet = { x: number; y: number; a: number; age: number; owner: stri
 /** `target` is a heading (rad) to steer toward, e.g. from the mouse; it is used when no turn key is held. */
 export type Input = { left: boolean; right: boolean; boost: boolean; target?: number }
 
-/** Messages carried on the wire; `pos` track objects are PosMsg, `events` objects are EventMsg. */
+/** Messages a player sends; they all travel on one track, `game`, as WireMsg. */
 /** `ts`: when sent, on the shared clock (net.ts syncClock), for delay and jitter stats; absent if not synced. */
 export type PosMsg = Plane & { ts?: number }
 export type EventMsg =
@@ -47,7 +47,7 @@ export type EventMsg =
   | { t: 'hit'; by: string }
   | { t: 'kill'; by: string; n: number }
 
-/** Who a player is and their score, on the `meta` track. */
+/** Who a player is and their score. */
 export type MetaMsg = { name: string; color: string; kills: number; deaths: number }
 export const COLORS = ['#60a5fa', '#f87171', '#4ade80', '#facc15', '#c084fc', '#fb923c', '#2dd4bf', '#f472b6']
 
@@ -198,5 +198,11 @@ export function findHit(p: Plane, self: string, bullets: Bullet[]): number {
 
 const enc = new TextEncoder()
 const dec = new TextDecoder()
-export const encode = (m: PosMsg | EventMsg | MetaMsg): Uint8Array => enc.encode(JSON.stringify(m))
+/**
+ * One object on the `game` track. A single track per player keeps the relay to one stream per player
+ * per subscriber (Safari stops granting credit for server-opened streams after about a hundred).
+ */
+export type WireMsg = { t: 'pos'; p: PosMsg } | { t: 'meta'; m: MetaMsg } | EventMsg
+
+export const encode = (m: WireMsg): Uint8Array => enc.encode(JSON.stringify(m))
 export const decode = <T>(b: Uint8Array): T => JSON.parse(dec.decode(b)) as T

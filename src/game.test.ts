@@ -35,6 +35,7 @@ import {
   wrapDist,
   type Bullet,
   type EventMsg,
+  type WireMsg,
 } from './game'
 
 describe('game rules', () => {
@@ -141,5 +142,7 @@ describe('game rules', () => {
   it('round-trips wire messages', () => {
     const m: EventMsg = { t: 'kill', by: 'abc', n: 1 }
     expect(decode<EventMsg>(encode(m))).toEqual(m)
+    const pos: WireMsg = { t: 'pos', p: { x: 1, y: 2, a: 0, hp: 3 } }
+    expect(decode<WireMsg>(encode(pos))).toEqual(pos)
   })
 })

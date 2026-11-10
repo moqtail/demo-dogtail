@@ -174,6 +174,7 @@ const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
 field('name').value = saved.name ?? ''
 // Room: the link's, else the one this device last joined, else a fresh random one, so a first game
 // doesn't land in a room strangers on the public relay also default to.
+const ROOM_CAP = 50
 const BIRDS = ['falcon', 'hawk', 'eagle', 'raven', 'kestrel', 'osprey', 'condor', 'swift', 'merlin', 'harrier']
 const randomRoom = () => `${BIRDS[Math.floor(Math.random() * BIRDS.length)]}-${100 + Math.floor(Math.random() * 900)}`
 const defaultRoom = typeof saved.room === 'string' && saved.room.trim() ? saved.room.trim() : randomRoom()
@@ -181,9 +182,13 @@ field('room').value = params.get('room') ?? defaultRoom
 const roomUrl = () => {
   const u = new URL(location.href)
   u.searchParams.set('room', field('room').value.trim() || defaultRoom)
+  u.searchParams.delete('full')
   return u.href
 }
 const showInvite = () => (document.getElementById('invite')!.textContent = `Invite others: ${roomUrl()}`)
+const fullRoom = params.get('full')
+if (fullRoom)
+  document.getElementById('notice')!.textContent = `Room ${fullRoom} is full (${ROOM_CAP} players). Here is a new one.`
 field('room').addEventListener('input', showInvite)
 showInvite()
 hud.textContent = ''
@@ -264,6 +269,13 @@ const net = await connect(
 })
 
 stats?.setRtt(net.joinRtt)
+
+// A room holds ROOM_CAP players. Once the others have shown up (pos is 10 Hz), a newcomer to a full
+// room goes back to the join screen with a fresh room. Only newcomers check, so nobody is kicked;
+// two joining at once may both stay, which is fine.
+setTimeout(() => {
+  if (peers.size + 1 > ROOM_CAP) location.replace(`?room=${randomRoom()}&full=${encodeURIComponent(room)}`)
+}, 1500)
 
 // Screens big enough show the whole arena. On a phone that would shrink a plane to a few pixels, so
 // there the view zooms to full size and follows your plane, with arrows pointing at players off screen.
@@ -368,14 +380,21 @@ setInterval(sendMeta, 2000)
 // Scoreboard, best first. 4 Hz is plenty for text and keeps DOM work out of the frame loop.
 const scores = document.getElementById('scores')!
 setInterval(() => {
-  const rows = [
-    { name: `${myName} (you)`, color: myColor, kills, deaths },
-    ...[...peers.keys()].map((id) => metas.get(id) ?? { name: id, color: '#9ca3af', kills: 0, deaths: 0 }),
+  const all = [
+    { name: `${myName} (you)`, color: myColor, kills, deaths, you: true },
+    ...[...peers.keys()].map((id) => ({
+      ...(metas.get(id) ?? { name: id, color: '#9ca3af', kills: 0, deaths: 0 }),
+      you: false,
+    })),
   ].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)
+  // Top 10, plus your own row (with your rank) when you are further down.
+  const mine = all.findIndex((r) => r.you)
+  const shown = all.slice(0, 10).map((r, i) => ({ ...r, rank: i + 1 }))
+  if (mine >= 10) shown.push({ ...all[mine]!, rank: mine + 1 })
   scores.replaceChildren(
-    ...rows.map((r) => {
+    ...shown.map((r) => {
       const li = document.createElement('li')
-      const name = Object.assign(document.createElement('span'), { textContent: r.name })
+      const name = Object.assign(document.createElement('span'), { textContent: `${r.rank}. ${r.name}` })
       name.style.color = r.color
       li.append(name, Object.assign(document.createElement('span'), { textContent: `${r.kills} / ${r.deaths}` }))
       return li
@@ -394,13 +413,13 @@ document.addEventListener('visibilitychange', () => {
   for (const b of document.querySelectorAll('#touch .held')) b.classList.remove('held')
 })
 
-// 20 Hz on a timer, not in the frame loop: background tabs pause rAF but still run timers
+// 10 Hz on a timer (prediction and easing hide the gaps), not in the frame loop: background tabs pause rAF but still run timers
 // (throttled to ~1 Hz), which keeps an idle player under the 3 s drop timeout.
 setInterval(() => {
   const offset = clock.offset
   const away = document.hidden || performance.now() - last > AWAY_AFTER
   net.sendPos({ ...plane, away, ts: offset === undefined ? undefined : Date.now() + offset })
-}, 50)
+}, 100)
 
 let last = performance.now()
 function frame(now: number) {
