@@ -53,7 +53,7 @@ import {
 import { BOOM_LIFE, drawFrame, type Boom, type View } from './draw'
 import { startAnalytics } from './analytics'
 import { connect, syncClock, type Senders } from './net'
-import { Ace } from './ace'
+import { Ace, type Level } from './ace'
 import type { Brain } from './brain'
 import { watchStats } from './netstats'
 import { play, setSound, soundOn, type SoundName } from './sound'
@@ -580,6 +580,28 @@ spawnedAt = performance.now() // the first pulse plays once you're in, not behin
 // new aces. Ace ids start with "z", which a player's hex id never does.
 const ROOM_FILL = 4
 const aces = new Map<string, Ace>()
+// Settings → Aces: how good they are, or off. The host's choice decides for the room, so it is in their names.
+const aceLevel = document.getElementById('ace-level') as HTMLSelectElement
+try {
+  aceLevel.value = localStorage.getItem('dogtail.aces') ?? 'moderate'
+} catch {
+  aceLevel.value = 'moderate'
+}
+if (!aceLevel.value) aceLevel.value = 'moderate' // an unknown saved value
+const dropAce = (id: string) => {
+  aces.delete(id) // it goes quiet; other players drop it after 3 s
+  peers.delete(id)
+  metas.delete(id)
+}
+aceLevel.addEventListener('change', () => {
+  aceLevel.blur()
+  try {
+    localStorage.setItem('dogtail.aces', aceLevel.value)
+  } catch {
+    // Storage blocked: lasts until reload.
+  }
+  for (const id of [...aces.keys()]) dropAce(id) // new ones come at the new level
+})
 let brain: Brain | undefined
 let aceCount = 0
 let hosting = false // one change at a time: loading the weights and publishing a track take a moment
@@ -588,27 +610,20 @@ setInterval(async () => {
   const people = [...peers].filter(([id]) => !isAce(id))
   const active = [...people.filter(([, p]) => !p.net.away).map(([id]) => id)]
   if (!document.hidden && performance.now() - last < AWAY_AFTER) active.push(me)
-  const want = active.length && active.sort()[0] === me ? Math.max(0, ROOM_FILL - people.length - 1) : 0
+  const host = active.length && active.sort()[0] === me && aceLevel.value !== 'off'
+  const want = host ? Math.max(0, ROOM_FILL - people.length - 1) : 0
   hosting = true
   try {
     if (aces.size > want) {
-      const [id] = [...aces.keys()].slice(-1)
-      aces.delete(id!) // it goes quiet; other players drop it after 3 s
-      peers.delete(id!)
-      metas.delete(id!)
+      dropAce([...aces.keys()].at(-1)!)
     } else if (aces.size < want) {
       brain ??= (await import('./brain.json')).default as Brain // only a hosting tab downloads the weights
       const id = `z${me}${aceCount++}`
       const used = new Set([myColor, ...[...metas.values()].map((m) => m.color)])
       const color = COLORS.find((c) => !used.has(c)) ?? COLORS[aceCount % COLORS.length]!
-      const ace = new Ace(
-        id,
-        { name: `ace-${aceCount}`, color, pilot: '🤖' },
-        room,
-        brain,
-        tellAll(id, await conn.player(id)),
-        clock,
-      )
+      const level = aceLevel.value as Level
+      const look = { name: `ace-${aceCount} (${level})`, color, pilot: '🤖' }
+      const ace = new Ace(id, look, room, brain, tellAll(id, await conn.player(id)), clock, level)
       aces.set(id, ace)
     }
   } finally {
