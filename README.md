@@ -25,9 +25,9 @@ Without a certificate in `cert/`, `npm run dev` serves plain http and uses the p
 
 ```bash
 npm run build      # static site in dist/
-npm run deploy     # build and upload to Cloudflare Workers (dogtail.moqtail.dev), see wrangler.jsonc
-npm run deploy:zafergurel  # the same build on dogtail.zafergurel.com, a separate Worker
 ```
+
+Every push to main deploys to Cloudflare Workers (`.github/workflows/page.yml`).
 
 Query params: `?room=<name>` (default: the room this device last joined, or a random one like `falcon-482` on a first visit), `?relay=<moqt:// or https:// url>`, `?debug` (opens the network stats panel).
 
@@ -101,21 +101,10 @@ npm run bots -- <room> <count>      # in another; Ctrl-C stops them
 
 Then join `<room>` from the game with `?debug` to see delay, jitter and loss per player.
 
-## Trained pilots
+## Aces
 
-`train/` trains a pilot with reinforcement learning (PPO). It flies the aces (🤖 `ace-N`) that fill quiet rooms: while fewer than 4 people are in a room, aces make up the rest, and they leave as people join. There is no server for them either: the active player with the lowest id hosts them in their tab (`src/ace.ts`), each ace a player with its own track on that tab's connection; when the host leaves or switches tabs, the next player takes over with new aces. Only a hosting tab downloads the weights (about 220 KB gzipped). Settings → Aces sets how good they are, or turns them off; the host's choice decides for the room, so it shows in their names (`ace-1 (easy)`). The levels weaken the same network at play time, without retraining: blurrier vision of other planes, slower reactions, and less certain choices. Measured against the rule-based pilot (`train/evaluate.py`), easy gets 0.45 kills per death, moderate (the default) 0.93, hard 3.14. `npm run bots -- <room> <count> --brain` brings in more aces from the dev server.
+While fewer than 4 people are in a room, computer pilots (🤖 `ace-N`) make up the rest, and they leave as people join. They were trained with reinforcement learning; how is in [`train/`](train/README.md).
 
-- **Simulator** (`train/sim.py`): `game.ts`'s rules in numpy, stepping hundreds of matches at once, about 250,000 plane-decisions a second on a laptop. `train/test_parity.py` plays a recorded dogfight from `game.ts` (`train/golden.ts`) and checks every frame matches.
-- **What a pilot sees** (`train/env.py`, 73 numbers, relative to its own nose): its health, shields and cooldowns; the nearest 3 planes, 6 enemy bullets and 2 power-ups. Other planes' positions get a few pixels of noise, as they do over the network.
-- **What it does**: every 100 ms, one of 12 actions (turn left, none or right × boost × fire).
-- **Rewards**: +1 a kill, −1 a death, ±0.2 a hit dealt or taken, +0.1 a power-up, and early on a small nudge for pointing at someone.
-- **Opponents**: a rule-based pilot (chases the nearest plane, aims ahead, fires when lined up) and earlier copies of itself.
-- **In the browser** (`src/brain.ts`): the same observation and the network's forward pass in plain TypeScript, no ML library; the weights are `src/brain.json`. `brain.test.ts` checks it against PyTorch on states from the simulator (`train/make_fixture.py`).
+There is no server for them either: the active player with the lowest id hosts them in their tab (`src/ace.ts`), each ace a player with its own track on that tab's connection. When the host leaves or switches tabs, the next player takes over with new aces. Only a hosting tab downloads the pilot (about 220 KB gzipped).
 
-```bash
-python3 -m venv train/.venv && train/.venv/bin/pip install numpy torch
-train/.venv/bin/python train/test_parity.py   # simulator matches game.ts
-train/.venv/bin/python train/ppo.py 100       # 100M steps, ~25 min on an M4 Pro; writes train/out/
-train/.venv/bin/python train/evaluate.py      # trained vs rule-based, fresh matches
-cp train/out/brain.json src/brain.json        # ship it
-```
+Settings → Aces sets how good they are (easy, moderate, the default, or hard) or turns them off. The host's choice decides for the room, so it shows in their names (`ace-1 (easy)`). `npm run bots -- <room> <count> --brain` brings in more aces from the dev server.
