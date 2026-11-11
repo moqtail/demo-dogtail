@@ -31,14 +31,20 @@ import {
   stepBullets,
   stepPlane,
   type Bullet,
+  type EventMsg,
+  isAce,
   type MetaMsg,
+  type PosMsg,
+  type WireMsg,
   type Plane,
   type PowerUp,
   PIC,
   packPic,
   unpackPic,
   viewScale,
+  ARMOR,
   PICKUP_RADIUS,
+  RAPID,
   POWER_ICON,
   powerUpsAt,
   REACTIONS,
@@ -46,7 +52,9 @@ import {
 } from './game'
 import { BOOM_LIFE, drawFrame, type Boom, type View } from './draw'
 import { startAnalytics } from './analytics'
-import { connect, syncClock } from './net'
+import { connect, syncClock, type Senders } from './net'
+import { Ace } from './ace'
+import type { Brain } from './brain'
 import { watchStats } from './netstats'
 import { play, setSound, soundOn, type SoundName } from './sound'
 
@@ -172,8 +180,6 @@ let drops: PowerUp[] = []
 const grabbed = new Set<string>()
 let armorFor = 0 // 🛡️: can't be hit; unlike the spawn shield, firing keeps it
 let rapidFor = 0 // ⚡: fires twice as fast
-const ARMOR = 5
-const RAPID = 6
 
 // Kill feed: the last few kills, top left, each fading after FEED_SHOW ms.
 const feedList = document.getElementById('feed')!
@@ -489,51 +495,73 @@ addEventListener('keydown', (e) => {
 })
 let stats: ReturnType<typeof watchStats> | undefined
 
-const net = await connect(
+// Messages from other players, from the network or from aces hosted in this tab, go to the game here
+// and to every ace in this tab but their sender.
+function receive(from: string, w: WireMsg) {
+  for (const [id, a] of aces) if (id !== from) a.hear(from, w)
+  if (from === me) return // our own, passed on to our aces only
+  if (w.t === 'pos') onPos(from, w.p)
+  else if (w.t === 'meta') onMeta(from, w.m)
+  else onEvent(from, w)
+}
+function onPos(id: string, p: PosMsg) {
+  stats?.onPos(id, p.ts)
+  const peer = peers.get(id)
+  if (peer) Object.assign(peer, { net: p, seen: performance.now() })
+  else peers.set(id, { net: p, shown: { ...p }, seen: performance.now() })
+}
+function onEvent(id: string, m: EventMsg) {
+  if (m.t === 'kill') {
+    const key = `${id}:${m.n}`
+    if (killsSeen.has(key)) return // a repeat of a kill already counted
+    killsSeen.add(key)
+    feed(m.by, id)
+  }
+  if (m.t === 'react') return void reactions.set(id, { e: m.e, at: performance.now() })
+  if (m.t === 'grab') return void grabbed.add(m.k)
+  if (m.t === 'pic') {
+    if (picData.get(id) !== m.d) (picData.set(id, m.d), pics.set(id, picCanvas(m.d)))
+    return
+  }
+  if (m.t === 'shot')
+    bullets.push(
+      ...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now(), clock.offset)),
+    )
+  else {
+    const peer = peers.get(id)
+    if (peer) boom(peer.shown, m.t === 'kill')
+    if (m.t === 'kill' && m.by === me) {
+      kills++
+      scoreChanged = true
+    }
+  }
+}
+function onMeta(id: string, m: MetaMsg) {
+  metas.set(id, m)
+}
+
+const conn = await connect(
   relay,
   room,
   me,
   __CERT_HASH__,
   {
-    onPos: (id, p) => {
-      stats?.onPos(id, p.ts)
-      const peer = peers.get(id)
-      if (peer) Object.assign(peer, { net: p, seen: performance.now() })
-      else peers.set(id, { net: p, shown: { ...p }, seen: performance.now() })
-    },
-    onEvent: (id, m) => {
-      if (m.t === 'kill') {
-        const key = `${id}:${m.n}`
-        if (killsSeen.has(key)) return // a repeat of a kill already counted
-        killsSeen.add(key)
-        feed(m.by, id)
-      }
-      if (m.t === 'react') return void reactions.set(id, { e: m.e, at: performance.now() })
-      if (m.t === 'grab') return void grabbed.add(m.k)
-      if (m.t === 'pic') {
-        if (picData.get(id) !== m.d) (picData.set(id, m.d), pics.set(id, picCanvas(m.d)))
-        return
-      }
-      if (m.t === 'shot')
-        bullets.push(
-          ...stepBullets([{ x: m.x, y: m.y, a: m.a, age: 0, owner: id }], shotLag(m.ts, Date.now(), clock.offset)),
-        )
-      else {
-        const peer = peers.get(id)
-        if (peer) boom(peer.shown, m.t === 'kill')
-        if (m.t === 'kill' && m.by === me) {
-          kills++
-          scoreChanged = true
-        }
-      }
-    },
-    onMeta: (id, m) => metas.set(id, m),
+    onPos: (id, p) => receive(id, { t: 'pos', p }),
+    onMeta: (id, m) => receive(id, { t: 'meta', m }),
+    onEvent: receive,
   },
   (client) => (stats = watchStats(client, clock, (id) => metas.get(id)?.name ?? id, statsPanel)),
 ).catch((err) => {
   hud.textContent = `Could not connect to ${relay}: ${err}`
   throw err
 })
+/** Sends on a player's track and hands the message to this tab's aces and game, which the relay won't. */
+const tellAll = (id: string, out: Senders): Senders => ({
+  sendPos: (p) => (out.sendPos(p), receive(id, { t: 'pos', p })),
+  sendEvent: (m) => (out.sendEvent(m), receive(id, m)),
+  sendMeta: (m) => (out.sendMeta(m), receive(id, { t: 'meta', m })),
+})
+const net = { ...tellAll(me, conn), joinRtt: conn.joinRtt }
 
 stats?.setRtt(net.joinRtt)
 
@@ -545,6 +573,50 @@ addEventListener('pagehide', () =>
 )
 setInterval(() => analytics.track('room_size', { room, players: peers.size + 1 }), 60_000)
 spawnedAt = performance.now() // the first pulse plays once you're in, not behind the join screen
+
+// Aces: while fewer than ROOM_FILL people are in the room, pilots trained with reinforcement learning
+// (brain.ts, train/) fill it. The active player with the lowest id hosts them in their tab, each on its
+// own track over this connection; when that player leaves or goes away, the next one takes over with
+// new aces. Ace ids start with "z", which a player's hex id never does.
+const ROOM_FILL = 4
+const aces = new Map<string, Ace>()
+let brain: Brain | undefined
+let aceCount = 0
+let hosting = false // one change at a time: loading the weights and publishing a track take a moment
+setInterval(async () => {
+  if (hosting) return
+  const people = [...peers].filter(([id]) => !isAce(id))
+  const active = [...people.filter(([, p]) => !p.net.away).map(([id]) => id)]
+  if (!document.hidden && performance.now() - last < AWAY_AFTER) active.push(me)
+  const want = active.length && active.sort()[0] === me ? Math.max(0, ROOM_FILL - people.length - 1) : 0
+  hosting = true
+  try {
+    if (aces.size > want) {
+      const [id] = [...aces.keys()].slice(-1)
+      aces.delete(id!) // it goes quiet; other players drop it after 3 s
+      peers.delete(id!)
+      metas.delete(id!)
+    } else if (aces.size < want) {
+      brain ??= (await import('./brain.json')).default as Brain // only a hosting tab downloads the weights
+      const id = `z${me}${aceCount++}`
+      const used = new Set([myColor, ...[...metas.values()].map((m) => m.color)])
+      const color = COLORS.find((c) => !used.has(c)) ?? COLORS[aceCount % COLORS.length]!
+      const ace = new Ace(
+        id,
+        { name: `ace-${aceCount}`, color, pilot: '🤖' },
+        room,
+        brain,
+        tellAll(id, await conn.player(id)),
+        clock,
+      )
+      aces.set(id, ace)
+    }
+  } finally {
+    hosting = false
+  }
+}, 1000)
+setInterval(() => aces.forEach((a) => a.tick()), 100)
+setInterval(() => aces.forEach((a) => a.meta()), 2000)
 
 // A room holds ROOM_CAP players. Once the others have shown up (pos is 10 Hz), a newcomer to a full
 // room goes back to the join screen with a fresh room. Only newcomers check, so nobody is kicked;

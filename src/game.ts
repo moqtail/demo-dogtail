@@ -70,6 +70,9 @@ export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
   }
 }
 
+/** Aces hosted in a player's tab (main.ts) have ids starting with "z"; a player's id is hex. */
+export const isAce = (id: string) => id.startsWith('z')
+
 /** Quick reactions, keys 1–4: a fixed set, so nobody can show arbitrary text over other planes. */
 export const REACTIONS = ['😂', '🔥', '👋', '💢']
 
@@ -80,6 +83,8 @@ export const POWER_SLOT = 8000 // ms between drops
 export const POWER_LIFE = 16000 // ms a drop stays if nobody grabs it
 export const POWER_PER_SLOT = 2
 export const PICKUP_RADIUS = 24
+export const ARMOR = 5 // s of 🛡️: can't be hit; unlike the spawn shield, firing keeps it
+export const RAPID = 6 // s of ⚡: fires twice as fast
 
 /** A small seeded random generator, so every player derives the same drops. */
 function seeded(text: string) {

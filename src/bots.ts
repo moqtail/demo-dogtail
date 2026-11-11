@@ -27,7 +27,7 @@ else {
   // Same relay as the game: the one on this machine when there is a LAN cert, else the public one.
   const relay =
     params.get('relay') ?? (__CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.n1.fra.moqtail.dev')
-  worker.postMessage({ room, n, relay, certHash: __CERT_HASH__ })
+  worker.postMessage({ room, n, relay, certHash: __CERT_HASH__, brain: params.has('brain') })
   let last = 0
   worker.onmessage = (e: MessageEvent<{ connected: number; failed: number; received: number; lastError: string }>) => {
     const { connected, failed, received, lastError } = e.data
