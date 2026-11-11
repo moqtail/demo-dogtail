@@ -16,8 +16,8 @@
 
 /** Pure game rules: no DOM, no network, so they can be unit tested. */
 
-export const W = 1600
-export const H = 1000
+export const W = 2400
+export const H = 1500
 export const SPEED = 180
 export const BOOST = 320
 export const TURN = 3 // rad/s
@@ -130,7 +130,7 @@ export type PowerUp = { key: string; x: number; y: number; kind: PowerKind }
 export const POWER_ICON: Record<PowerKind, string> = { shield: '🛡️', rapid: '⚡', heart: '❤️' }
 export const POWER_SLOT = 8000 // ms between drops
 export const POWER_LIFE = 16000 // ms a drop stays if nobody grabs it
-export const POWER_PER_SLOT = 2
+export const POWER_PER_SLOT = 4 // the arena is 2.25× its first size, so drops stay about as dense
 export const PICKUP_RADIUS = 24
 export const ARMOR = 5 // s of 🛡️: can't be hit; unlike the spawn shield, firing keeps it
 export const RAPID = 6 // s of ⚡: fires twice as fast

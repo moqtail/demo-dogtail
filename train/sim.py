@@ -6,12 +6,12 @@ no network. Arrays are (E, P): E matches of P planes. test_parity.py checks it a
 """
 import numpy as np
 
-W, H = 1600.0, 1000.0
+W, H = 2400.0, 1500.0
 SPEED, BOOST, TURN = 180.0, 320.0, 3.0
 BULLET_SPEED, BULLET_LIFE, FIRE_COOLDOWN, HIT_RADIUS = 520.0, 1.2, 0.2, 14.0
 MAX_HP, SPAWN_SHIELD, RESPAWN_DELAY = 3, 1.5, 2.0
 ARMOR, RAPID = 5.0, 6.0  # power-up durations, s (main.ts)
-POWER_SLOT, POWER_LIFE, POWER_PER_SLOT, PICKUP_RADIUS = 8.0, 16.0, 2, 24.0
+POWER_SLOT, POWER_LIFE, POWER_PER_SLOT, PICKUP_RADIUS = 8.0, 16.0, 4, 24.0
 SHIELD_UP, RAPID_UP, HEART_UP = 0, 1, 2
 SLOTS = 13  # bullets alive per plane at most: BULLET_LIFE / (FIRE_COOLDOWN / 2) + 1
 
