@@ -225,6 +225,93 @@
         background-size: cover;
         image-rendering: pixelated;
       }
+      #teams {
+        border: 0;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        gap: 6px;
+      }
+      #teams legend {
+        color: #9ca3af;
+        padding: 0;
+        margin-bottom: 4px;
+      }
+      #teams label {
+        flex: 1;
+        text-align: center;
+        white-space: nowrap;
+        padding: 4px 6px;
+        border-radius: 14px;
+        background: #1f2937;
+        border: 2px solid transparent;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      #teams label:has(:checked) {
+        border-color: #f9fafb;
+      }
+      #teams label:has(:focus-visible) {
+        outline: 2px solid #f9fafb;
+        outline-offset: 2px;
+      }
+      #teams input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      #teambar {
+        position: fixed;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 12px;
+        border: 0;
+        border-radius: 14px;
+        background: #111827cc;
+        color: #e5e7eb;
+        font: bold 15px system-ui;
+        cursor: pointer;
+      }
+      #teambar[hidden] {
+        display: none;
+      }
+      #teambar .bar {
+        width: 120px;
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(to right, #ef4444 var(--dogs, 50%), #3b82f6 var(--dogs, 50%));
+      }
+      #teambar .time {
+        font-weight: normal;
+        color: #9ca3af;
+        font-variant-numeric: tabular-nums;
+      }
+      #banner {
+        position: fixed;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        padding: 12px 24px;
+        border-radius: 12px;
+        background: #111827dd;
+        font: bold 32px system-ui;
+        pointer-events: none;
+        animation: pop 0.4s ease-out;
+      }
+      #banner[hidden] {
+        display: none;
+      }
+      @keyframes pop {
+        from {
+          transform: translate(-50%, -50%) scale(0.5);
+          opacity: 0;
+        }
+      }
       #relay-box summary {
         color: #9ca3af;
         cursor: pointer;
@@ -410,11 +497,16 @@
     <canvas id="game"></canvas>
     <pre id="stats" hidden></pre>
     <ol id="scores" aria-label="Scoreboard"></ol>
+    <button id="teambar" hidden aria-label="Team scores this round">
+      <span class="dogs"></span><span class="bar"></span><span class="cats"></span><span class="time"></span>
+    </button>
+    <p id="banner" hidden></p>
     <form id="join">
       <h1>DOGtail</h1>
       <label>Your name <input type="text" name="name" maxlength="16" required autocomplete="nickname" /></label>
       <fieldset id="colors"><legend>Color</legend></fieldset>
       <fieldset id="pilots"><legend>Pilot</legend></fieldset>
+      <fieldset id="teams"><legend>Team</legend></fieldset>
       <input type="file" id="pic-file" accept="image/*" hidden />
       <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
       <details id="relay-box">

@@ -49,6 +49,14 @@ import {
   powerUpsAt,
   REACTIONS,
   wrapDist,
+  allies,
+  RoundKills,
+  roundAt,
+  ROUND_MS,
+  smallerTeam,
+  TEAMS,
+  teamScores,
+  type Team,
 } from './game'
 import { BOOM_LIFE, drawFrame, type Boom, type View } from './draw'
 import { startAnalytics } from './analytics'
@@ -83,6 +91,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF' && !e.repeat) toggleFullscreen()
   if (e.code === 'KeyM' && !e.repeat) minimap.flip()
   if (e.code === 'KeyE' && !e.repeat) showReactions.flip()
+  if (e.code === 'KeyT' && !e.repeat) switchTeam()
   if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomBy(1.1)
   if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomBy(1 / 1.1)
   if (e.code === 'Digit0' && !e.repeat) zoomBy(0)
@@ -346,7 +355,15 @@ fit()
 // address bar is the invite link.
 const joinForm = document.getElementById('join') as HTMLFormElement
 const PROFILE_KEY = 'dogtail.profile'
-let saved: { name?: string; color?: string; pilot?: string; pic?: string; room?: string; relay?: string } = {}
+let saved: {
+  name?: string
+  color?: string
+  pilot?: string
+  pic?: string
+  room?: string
+  relay?: string
+  team?: string
+} = {}
 try {
   saved = JSON.parse(localStorage.getItem(PROFILE_KEY) ?? '{}')
 } catch {
@@ -413,6 +430,20 @@ picFile.addEventListener('change', async () => {
 })
 const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
 field('name').value = saved.name ?? ''
+// Team: Auto joins the smaller side when the room plays teams, else plays alone. A link's ?team= picks one.
+const TEAM_CHOICES = ['auto', 'dogs', 'cats', 'solo']
+const startTeam = [params.get('team'), saved.team].find((t) => TEAM_CHOICES.includes(t!)) ?? 'auto'
+for (const t of TEAM_CHOICES) {
+  const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'team', value: t })
+  const label = document.createElement('label')
+  label.append(
+    radio,
+    t === 'dogs' || t === 'cats' ? `${TEAMS[t].icon} ${TEAMS[t].name}` : t === 'auto' ? '🎲 Auto' : '🎯 Solo',
+  )
+  radio.checked = t === startTeam
+  document.getElementById('teams')!.append(label)
+}
+const teamChoice = () => (joinForm.elements.namedItem('team') as RadioNodeList).value || 'auto'
 // Room: the link's, else the one this device last joined, else a fresh random one, so a first game
 // doesn't land in a room strangers on the public relay also default to.
 const ROOM_CAP = 50
@@ -431,6 +462,10 @@ const roomUrl = () => {
   u.searchParams.set('room', field('room').value.trim() || defaultRoom)
   if (relayValue() === DEFAULT_RELAY) u.searchParams.delete('relay')
   else u.searchParams.set('relay', relayValue())
+  // A side you picked goes along, so friends land on it: "come help the dogs".
+  const t = teamChoice()
+  if (t === 'dogs' || t === 'cats') u.searchParams.set('team', t)
+  else u.searchParams.delete('team')
   u.searchParams.delete('full')
   return u.href
 }
@@ -440,6 +475,7 @@ if (fullRoom)
   document.getElementById('notice')!.textContent = `Room ${fullRoom} is full (${ROOM_CAP} players). Here is a new one.`
 field('room').addEventListener('input', showInvite)
 field('relay').addEventListener('input', showInvite)
+document.getElementById('teams')!.addEventListener('change', showInvite)
 showInvite()
 hud.textContent = ''
 await new Promise<void>((resolve) =>
@@ -456,6 +492,10 @@ const pilotChoice = (joinForm.elements.namedItem('pilot') as RadioNodeList).valu
 const myPic = pilotChoice === 'pic' ? myPicData : undefined
 const myPicImg = myPic ? picCanvas(myPic) : undefined
 const myPilot = pilotChoice === 'pic' ? '' : pilotChoice // the emoji in meta; a picture goes as its own message
+let myChoice = teamChoice()
+let myTeam: Team = myChoice === 'dogs' || myChoice === 'cats' ? myChoice : ''
+const roundKills = new RoundKills()
+const clockNow = () => Date.now() + (clock.offset ?? 0)
 try {
   localStorage.setItem(
     PROFILE_KEY,
@@ -466,6 +506,7 @@ try {
       pic: myPicData,
       room,
       relay: relay === DEFAULT_RELAY ? undefined : relay,
+      team: myChoice,
     }),
   )
 } catch {
@@ -532,6 +573,7 @@ function onEvent(id: string, m: EventMsg) {
     if (peer) boom(peer.shown, m.t === 'kill')
     if (m.t === 'kill' && m.by === me) {
       kills++
+      roundKills.at(clockNow()).kills++
       scoreChanged = true
     }
   }
@@ -612,7 +654,19 @@ setInterval(async () => {
   const active = [...people.filter(([, p]) => !p.net.away).map(([id]) => id)]
   if (!document.hidden && performance.now() - last < AWAY_AFTER) active.push(me)
   const host = active.length && active.sort()[0] === me && aceLevel.value !== 'off'
-  const want = host ? Math.max(0, ROOM_FILL - people.length - 1) : 0
+  // In a team room aces also even out the sides: as many as the bigger side is ahead by.
+  const peopleTeams = [myTeam, ...people.map(([id]) => metas.get(id)?.team)]
+  const teams = teamMode()
+  const ahead = Math.abs(
+    peopleTeams.filter((t) => t === 'dogs').length - peopleTeams.filter((t) => t === 'cats').length,
+  )
+  const want = host ? Math.max(0, ROOM_FILL - people.length - 1, teams ? ahead : 0) : 0
+  // Each ace takes the smaller side, counting the aces already there; out of team play, none.
+  for (const ace of aces.values())
+    if (!teams !== !ace.team) {
+      ace.team = teams ? smallerTeam([...peopleTeams, ...[...aces.values()].map((a) => a.team)]) : ''
+      ace.meta()
+    }
   hosting = true
   try {
     if (aces.size > want) {
@@ -625,7 +679,9 @@ setInterval(async () => {
       const level = aceLevel.value as Level
       const look = { name: `ace-${aceCount} (${level})`, color, pilot: '🤖' }
       const ace = new Ace(id, look, room, brain, tellAll(id, await conn.player(id)), clock, level)
+      if (teams) ace.team = smallerTeam([...peopleTeams, ...[...aces.values()].map((a) => a.team)])
       aces.set(id, ace)
+      ace.meta()
     }
   } finally {
     hosting = false
@@ -637,6 +693,15 @@ setInterval(() => aces.forEach((a) => a.meta()), 2000)
 // A room holds ROOM_CAP players. Once the others have shown up (pos is 10 Hz), a newcomer to a full
 // room goes back to the join screen with a fresh room. Only newcomers check, so nobody is kicked;
 // two joining at once may both stay, which is fine.
+/** A room plays teams once any person in it (not an ace) has picked a side. */
+const teamMode = () => !!myTeam || [...peers.keys()].some((id) => !isAce(id) && metas.get(id)?.team)
+// Auto: once the others have shown up, join the smaller side if the room plays teams; keep watching,
+// so a room that starts teams later pulls you in too.
+setInterval(() => {
+  if (myChoice !== 'auto' || myTeam || !teamMode()) return
+  myTeam = smallerTeam([...peers.keys()].filter((id) => !isAce(id)).map((id) => metas.get(id)?.team))
+  sendMeta()
+}, 1500)
 setTimeout(() => {
   if (peers.size + 1 > ROOM_CAP)
     (analytics.track('room_full', { room }), location.replace(`?room=${randomRoom()}&full=${encodeURIComponent(room)}`))
@@ -644,7 +709,11 @@ setTimeout(() => {
 
 // Meta goes out on join, on every score change and every 2 s: the repeats reach players who join
 // later without relying on the relay to replay an old group.
-const sendMeta = () => net.sendMeta({ name: myName, color: myColor, pilot: myPilot, kills, deaths })
+const myMeta = () => {
+  const { round, kills: rk } = roundKills.at(clockNow())
+  return { name: myName, color: myColor, pilot: myPilot, kills, deaths, team: myTeam, round, rk }
+}
+const sendMeta = () => net.sendMeta(myMeta())
 sendMeta()
 setInterval(sendMeta, 2000)
 // Your picture: every 3 s, for the same reason. About 800 bytes, one datagram.
@@ -658,7 +727,7 @@ if (myPic) {
 const scores = document.getElementById('scores')!
 setInterval(() => {
   const all = [
-    { name: `${myName} (you)`, color: myColor, kills, deaths, you: true },
+    { name: `${myName} (you)`, color: myColor, kills, deaths, team: myTeam, you: true },
     ...[...peers.keys()].map((id) => ({
       ...(metas.get(id) ?? { name: id, color: '#9ca3af', pilot: '', kills: 0, deaths: 0 }),
       you: false,
@@ -671,13 +740,66 @@ setInterval(() => {
   scores.replaceChildren(
     ...shown.map((r) => {
       const li = document.createElement('li')
-      const name = Object.assign(document.createElement('span'), { textContent: `${r.rank}. ${r.name}` })
+      const icon = r.team ? TEAMS[r.team].icon + ' ' : ''
+      const name = Object.assign(document.createElement('span'), { textContent: `${r.rank}. ${icon}${r.name}` })
       name.style.color = r.color
       li.append(name, Object.assign(document.createElement('span'), { textContent: `${r.kills} / ${r.deaths}` }))
       return li
     }),
   )
+  showTeams()
 }, 250)
+
+// Team bar (top centre): each side's kills this round and the time left; clicking it, or T, switches
+// sides. When a round ends, a banner names the winner, and the next one starts from 0.
+const teamBar = document.getElementById('teambar') as HTMLButtonElement
+const banner = document.getElementById('banner')!
+let shownRound = -1
+let shownScore = { dogs: 0, cats: 0 }
+function showTeams() {
+  const now = clockNow()
+  const round = roundAt(now)
+  if (round !== shownRound) {
+    const { dogs, cats } = shownScore
+    if (shownRound >= 0 && teamMode() && dogs + cats > 0) {
+      const d = TEAMS.dogs,
+        c = TEAMS.cats
+      banner.textContent =
+        dogs === cats
+          ? `Draw, ${dogs}–${cats}`
+          : dogs > cats
+            ? `${d.icon} ${d.name} win ${dogs}–${cats}! 🎉`
+            : `${c.icon} ${c.name} win ${cats}–${dogs}! 🎉`
+      banner.hidden = false
+      setTimeout(() => (banner.hidden = true), 4000)
+    }
+    shownRound = round
+  }
+  teamBar.hidden = !teamMode()
+  if (teamBar.hidden) return
+  shownScore = teamScores([myMeta(), ...[...peers.keys()].flatMap((id) => metas.get(id) ?? [])], round)
+  const { dogs, cats } = shownScore
+  const left = Math.ceil((ROUND_MS - (now % ROUND_MS)) / 1000)
+  const share = dogs + cats ? (dogs / (dogs + cats)) * 100 : 50
+  teamBar.style.setProperty('--dogs', `${share}%`)
+  teamBar.querySelector('.dogs')!.textContent = `${TEAMS.dogs.icon} ${dogs}`
+  teamBar.querySelector('.cats')!.textContent = `${cats} ${TEAMS.cats.icon}`
+  teamBar.querySelector('.time')!.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
+  teamBar.title = myTeam ? 'Switch sides (T): only while shot down' : 'Join the smaller side (T)'
+}
+teamBar.addEventListener('click', () => (teamBar.blur(), switchTeam()))
+let switchHintAt = -Infinity
+/** T or the team bar: a player without a side joins the smaller one; one with a side swaps while shot down. */
+function switchTeam() {
+  if (!joined) return
+  if (!myTeam) myTeam = smallerTeam([...peers.keys()].filter((id) => !isAce(id)).map((id) => metas.get(id)?.team))
+  else if (deadFor > 0) {
+    myTeam = myTeam === 'dogs' ? 'cats' : 'dogs'
+    roundKills.kills = 0 // your kills this round stay behind
+  } else return void (switchHintAt = performance.now())
+  myChoice = myTeam
+  sendMeta()
+}
 
 // A background tab pauses the frame loop, so the plane stops and can't be hit there. Peers are told
 // (`away` in pos) and draw it faded; the frame loop handles the return. Keys released while hidden
@@ -783,7 +905,7 @@ function frame(now: number) {
   bullets = stepBullets(bullets, dt)
 
   // Victim-side hit detection: only this client decides whether its own plane was hit.
-  const hit = alive ? findHit(plane, me, bullets) : -1
+  const hit = alive ? findHit(plane, me, bullets, (id) => allies(myTeam, metas.get(id)?.team)) : -1
   if (hit >= 0) {
     const by = bullets[hit]!.owner
     bullets.splice(hit, 1)
@@ -831,7 +953,7 @@ function frame(now: number) {
     metas,
     reactions: showReactions.on ? reactions : undefined,
     pics: picsBox.checked ? pics : undefined,
-    me: { id: me, plane, alive, color: myColor, pilot: myPilot, pic: myPicImg, spawnedAt },
+    me: { id: me, plane, alive, color: myColor, pilot: myPilot, pic: myPicImg, spawnedAt, team: myTeam },
     showMap: minimap.on,
   })
 
@@ -842,7 +964,9 @@ function frame(now: number) {
   const status = alive
     ? `HP ${plane.hp}/${maxHpFor(peers.size + 1)}${powers}`
     : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
-  hud.textContent = `room ${room} · ${status} · players ${peers.size + 1}`
+  const side = myTeam ? ` · ${TEAMS[myTeam].icon} ${TEAMS[myTeam].name}` : ''
+  const hint = now - switchHintAt < 2500 ? ' · switch sides when shot down' : ''
+  hud.textContent = `room ${room}${side} · ${status} · players ${peers.size + 1}${hint}`
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

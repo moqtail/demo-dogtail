@@ -45,6 +45,12 @@ import {
   stepPlane,
   turnToward,
   wrapDist,
+  allies,
+  smallerTeam,
+  teamScores,
+  RoundKills,
+  ROUND_MS,
+  type MetaMsg,
   type Bullet,
   type EventMsg,
   type WireMsg,
@@ -82,6 +88,27 @@ describe('game rules', () => {
     expect(findHit(p, 'me', [own])).toBe(-1)
     expect(findHit(p, 'me', [own, enemy])).toBe(1)
     expect(findHit({ ...p, shielded: true }, 'me', [own, enemy])).toBe(-1)
+    expect(findHit(p, 'me', [own, enemy], (id) => id === 'them')).toBe(-1) // a teammate's bullet passes through
+  })
+
+  it('plays teams: allies, the smaller side, and round scores', () => {
+    expect(allies('dogs', 'dogs')).toBe(true)
+    expect(allies('dogs', 'cats')).toBe(false)
+    expect(allies('', '')).toBe(false) // players without a team fight everyone
+    expect(smallerTeam([])).toBe('dogs')
+    expect(smallerTeam(['dogs', '', 'cats', 'dogs'])).toBe('cats')
+    const meta = (team: MetaMsg['team'], round: number, rk: number): MetaMsg => ({
+      ...{ name: 'p', color: '', pilot: '', kills: 0, deaths: 0 },
+      ...{ team, round, rk },
+    })
+    // Only this round's kills count, and only for players on a side.
+    expect(
+      teamScores([meta('dogs', 7, 3), meta('dogs', 7, 2), meta('cats', 7, 4), meta('cats', 6, 9), meta('', 7, 5)], 7),
+    ).toEqual({ dogs: 5, cats: 4 })
+    const rk = new RoundKills()
+    rk.at(ROUND_MS * 7 + 1).kills++
+    expect(rk.at(ROUND_MS * 7 + 2)).toMatchObject({ round: 7, kills: 1 })
+    expect(rk.at(ROUND_MS * 8)).toMatchObject({ round: 8, kills: 0 }) // a new round starts from 0
   })
 
   it('expires bullets', () => {
@@ -117,7 +144,12 @@ describe('game rules', () => {
       pilot: '',
       kills: 0,
       deaths: 2,
+      team: '',
+      round: 0,
+      rk: 0,
     })
+    expect(cleanMeta({ team: 'cats', round: 3, rk: 2 })).toMatchObject({ team: 'cats', round: 3, rk: 2 })
+    expect(cleanMeta({ team: 'wolves' as never }).team).toBe('')
     expect(cleanMeta({}).name).toBe('?')
     expect(cleanMeta({ pilot: '🦆' }).pilot).toBe('🦆')
   })

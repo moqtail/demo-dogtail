@@ -51,6 +51,8 @@ Pilot: an emoji, or 📷 your own picture (on a phone, take a photo or choose on
 
 Reactions: **1–4** or the buttons bottom right (beside FIRE on touch) pop 😂 🔥 👋 💢 over your plane, at most one a second; 😀 (top right) or **E** hides them, yours and everyone's. The kill feed (top left) shows the last few kills.
 
+Teams: 🐶 Dogs vs 🐱 Cats. Pick a side on the join screen, or 🎲 Auto, which joins the smaller side when the room plays teams (and Solo otherwise). A room plays teams as soon as anyone in it picks a side; an invite link carries your side (`?team=dogs`). Teammates wear a ring in their side's color, their bullets pass through you, the minimap shows each side in its color, and edge arrows point only at the other side. The bar at the top counts each side's kills in a 3-minute round, with the time left; rounds follow the shared clock, so everyone agrees when one ends, and a banner names the winner. **T** or a tap on the bar switches sides while you are shot down, leaving that round's kills behind. Aces even out the sides: they join the smaller one, and come in until the sides are level.
+
 Power-ups drop every 8 s and last 16 s: 🛡️ 5 s of armour (firing keeps it), ⚡ 6 s of double fire rate, ❤️ one heart (up to one over full). There is no server: every player derives the same drops from the room name and the shared clock, and only grabs are sent, so two players touching one within a network delay may both get it.
 
 A player whose tab is in the background (or whose game has stopped drawing for half a second) shows faded and marked "(away)": the game is paused there, so the plane can't move or be hit. Coming back gives the 1.5 s spawn shield and ignores shots fired meanwhile.
