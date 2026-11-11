@@ -33,7 +33,7 @@ Query params: `?room=<name>` (default: the room this device last joined, or a ra
 
 ## Controls
 
-Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **Space** fire. Mouse: the plane steers toward the cursor, and holding the left button fires; pressing a turn key hands control back to the keyboard until the mouse moves again.
+Keyboard: **A/D** or **←/→** turn, **W/↑** boost, **↓** drift (slow, tight turns, for circling a power-up), **Space** fire. Mouse: the plane steers toward the cursor, and holding the left button fires; pressing a turn key hands control back to the keyboard until the mouse moves again.
 
 Computers and tablets start with the whole arena in view; phones, where that would shrink planes to a few pixels, start at full size. Zoom in or out with the mouse wheel, a trackpad or two-finger pinch, or **+ / −** (**0** resets), from the whole arena to 1.5× (phones zoom out only so far); it is remembered on the device. Zoomed in, the view follows your plane; arrows at the screen edge point to players out of view.
 
@@ -43,7 +43,7 @@ The scoreboard (top right) shows the top 10 by kills / deaths, plus your own ran
 
 Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where the browser allows. On iPhone, Safari has no fullscreen for pages: use Share → Add to Home Screen (keep "Open as Web App" on) and open the game from that icon; it runs without Safari's bars.
 
-Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE bottom right.
+Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE and ▼ drift bottom right.
 
 Small screens also get a minimap at the bottom centre (🗺 button or **M** to hide it).
 
@@ -53,7 +53,7 @@ Reactions: **1–4** or the buttons bottom right (beside FIRE on touch) pop 😂
 
 Teams: 🐶 Dogs vs 🐱 Cats. Pick a side on the join screen, or 🎲 Auto, which joins the smaller side (Dogs if you're first); 🎯 Solo plays free-for-all. A room plays teams as soon as anyone in it picks a side; an invite link carries your side (`?team=dogs`). Teammates wear a ring in their side's color, their bullets pass through you, the minimap shows each side in its color, and edge arrows point only at the other side. The bar at the top counts each side's kills in a 3-minute round, with the time left; rounds follow the shared clock, so everyone agrees when one ends, and a banner names the winner. **T** or a tap on the bar switches sides while you are shot down, leaving that round's kills behind. Aces even out the sides: they join the smaller one, and come in until the sides are level.
 
-Power-ups drop every 8 s and last 16 s: 🛡️ 5 s of armour (firing keeps it), ⚡ 6 s of double fire rate, ❤️ one heart (up to one over full). There is no server: every player derives the same drops from the room name and the shared clock, and only grabs are sent, so two players touching one within a network delay may both get it.
+Power-ups drop every 8 s and last 16 s: 🛡️ 5 s of armour (firing keeps it), ⚡ 6 s of double fire rate, ❤️ one heart (up to one over full). There is no server: every player derives the same drops from the room name and the shared clock, and only grabs are sent, so two players touching one within a network delay may both get it. Shooting down 5 in a row without being shot down earns a free ⚡.
 
 A player whose tab is in the background (or whose game has stopped drawing for half a second) shows faded and marked "(away)": the game is paused there, so the plane can't move or be hit. Coming back gives the 1.5 s spawn shield and ignores shots fired meanwhile.
 

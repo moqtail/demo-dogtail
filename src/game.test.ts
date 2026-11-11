@@ -44,6 +44,10 @@ import {
   stepBullets,
   stepPlane,
   turnToward,
+  DRIFT_SPEED,
+  DRIFT_TURN,
+  SPEED,
+  TURN,
   wrapDist,
   allies,
   smallerTeam,
@@ -75,6 +79,14 @@ describe('game rules', () => {
     const p = { x: 100, y: 100, a: 0, hp: 3 }
     stepPlane(p, { left: true, right: false, boost: false, target: 1 }, 0.1)
     expect(p.a).toBeCloseTo(-0.3)
+  })
+
+  it('drifts slower and turns harder, for a tighter circle', () => {
+    const p = { x: 100, y: 100, a: 0, hp: 3 }
+    stepPlane(p, { left: false, right: true, boost: true, drift: true }, 0.1)
+    expect(p.a).toBeCloseTo(DRIFT_TURN * 0.1)
+    expect(Math.hypot(p.x - 100, p.y - 100)).toBeCloseTo(DRIFT_SPEED * 0.1)
+    expect(DRIFT_SPEED / DRIFT_TURN).toBeLessThan(SPEED / TURN / 3) // turning radius
   })
 
   it('measures distance across the wrap', () => {

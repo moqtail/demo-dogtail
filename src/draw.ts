@@ -250,8 +250,9 @@ function drawArrows(ctx: CanvasRenderingContext2D, sc: Scene) {
 /** Zoomed in: the whole arena at the bottom centre, between the touch controls. */
 function drawMap(ctx: CanvasRenderingContext2D, sc: Scene) {
   const { view, cam } = sc
-  const mw = 120
+  const mw = Math.round(Math.min(300, Math.max(120, ctx.canvas.width * 0.2))) // phones keep 120, between the thumbs
   const k = mw / W
+  const r = mw / 60 // dot radius, 2 at the smallest
   const mh = H * k
   ctx.setTransform(1, 0, 0, 1, (ctx.canvas.width - mw) / 2, ctx.canvas.height - mh - 16)
   ctx.fillStyle = '#11182799'
@@ -276,16 +277,16 @@ function drawMap(ctx: CanvasRenderingContext2D, sc: Scene) {
     ctx.fill()
   }
   ctx.fillStyle = '#fbbf24'
-  for (const d of sc.drops) ctx.fillRect(d.x * k - 1.5, d.y * k - 1.5, 3, 3)
+  for (const d of sc.drops) ctx.fillRect(d.x * k - r * 0.75, d.y * k - r * 0.75, r * 1.5, r * 1.5)
   for (const [id, peer] of sc.peers) {
     if (peer.shown.hp <= 0) continue
     ctx.globalAlpha = peer.shown.away ? 0.3 : 1
-    dot(peer.shown, mapColor(sc.metas.get(id)), 2)
+    dot(peer.shown, mapColor(sc.metas.get(id)), r)
   }
   ctx.globalAlpha = 1
   if (sc.me.alive) {
-    dot(sc.me.plane, '#f9fafb', 4.5) // a white ring around your color, so you stand out
-    dot(sc.me.plane, sc.me.team ? TEAMS[sc.me.team].color : sc.me.color, 3)
+    dot(sc.me.plane, '#f9fafb', r + 2.5) // a white ring around your color, so you stand out
+    dot(sc.me.plane, sc.me.team ? TEAMS[sc.me.team].color : sc.me.color, r + 1)
   }
 }
 

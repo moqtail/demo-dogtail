@@ -45,6 +45,7 @@ import {
   ARMOR,
   PICKUP_RADIUS,
   RAPID,
+  STREAK,
   POWER_ICON,
   powerUpsAt,
   REACTIONS,
@@ -189,6 +190,7 @@ let drops: PowerUp[] = []
 const grabbed = new Set<string>()
 let armorFor = 0 // 🛡️: can't be hit; unlike the spawn shield, firing keeps it
 let rapidFor = 0 // ⚡: fires twice as fast
+let streak = 0 // kills since you were last shot down; every STREAK of them earns a ⚡
 
 // Kill feed: the last few kills, top left, each fading after FEED_SHOW ms.
 const feedList = document.getElementById('feed')!
@@ -574,6 +576,11 @@ function onEvent(id: string, m: EventMsg) {
     if (m.t === 'kill' && m.by === me) {
       kills++
       roundKills.at(clockNow()).kills++
+      if (++streak % STREAK === 0) {
+        rapidFor = Math.max(rapidFor, RAPID)
+        flash(`🔥 ${streak} in a row! ${POWER_ICON.rapid}`)
+        play('hit')
+      }
       scoreChanged = true
     }
   }
@@ -754,6 +761,13 @@ setInterval(() => {
 // sides. When a round ends, a banner names the winner, and the next one starts from 0.
 const teamBar = document.getElementById('teambar') as HTMLButtonElement
 const banner = document.getElementById('banner')!
+let bannerTimer = 0
+function flash(text: string) {
+  banner.textContent = text
+  banner.hidden = false
+  clearTimeout(bannerTimer)
+  bannerTimer = setTimeout(() => (banner.hidden = true), 4000)
+}
 let shownRound = -1
 let shownScore = { dogs: 0, cats: 0 }
 function showTeams() {
@@ -764,14 +778,13 @@ function showTeams() {
     if (shownRound >= 0 && teamMode() && dogs + cats > 0) {
       const d = TEAMS.dogs,
         c = TEAMS.cats
-      banner.textContent =
+      flash(
         dogs === cats
           ? `Draw, ${dogs}–${cats}`
           : dogs > cats
             ? `${d.icon} ${d.name} win ${dogs}–${cats}! 🎉`
-            : `${c.icon} ${c.name} win ${cats}–${dogs}! 🎉`
-      banner.hidden = false
-      setTimeout(() => (banner.hidden = true), 4000)
+            : `${c.icon} ${c.name} win ${cats}–${dogs}! 🎉`,
+      )
     }
     shownRound = round
   }
@@ -883,6 +896,7 @@ function frame(now: number) {
         left: keys.has('KeyA') || keys.has('ArrowLeft'),
         right: keys.has('KeyD') || keys.has('ArrowRight'),
         boost: keys.has('KeyW') || keys.has('ArrowUp'),
+        drift: keys.has('ArrowDown'),
         // Ignored with the cursor right on the plane, where the heading to it would jitter.
         target:
           mouse && Math.hypot(mx - plane.x, my - plane.y) > 20 ? Math.atan2(my - plane.y, mx - plane.x) : undefined,
@@ -913,6 +927,7 @@ function frame(now: number) {
     net.sendEvent({ t: 'hit', by })
     if (plane.hp <= 0) {
       deaths++
+      streak = 0
       // Sent three times: datagrams can be lost, and receivers count each death number once.
       for (let i = 0; i < 3; i++) net.sendEvent({ t: 'kill', by, n: deaths })
       scoreChanged = true
