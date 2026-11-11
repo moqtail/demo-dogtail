@@ -430,7 +430,7 @@ picFile.addEventListener('change', async () => {
 })
 const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
 field('name').value = saved.name ?? ''
-// Team: Auto joins the smaller side when the room plays teams, else plays alone. A link's ?team= picks one.
+// Team: Auto joins the smaller side, Solo plays alone. A link's ?team= picks one.
 const TEAM_CHOICES = ['auto', 'dogs', 'cats', 'solo']
 const startTeam = [params.get('team'), saved.team].find((t) => TEAM_CHOICES.includes(t!)) ?? 'auto'
 for (const t of TEAM_CHOICES) {
@@ -695,13 +695,13 @@ setInterval(() => aces.forEach((a) => a.meta()), 2000)
 // two joining at once may both stay, which is fine.
 /** A room plays teams once any person in it (not an ace) has picked a side. */
 const teamMode = () => !!myTeam || [...peers.keys()].some((id) => !isAce(id) && metas.get(id)?.team)
-// Auto: once the others have shown up, join the smaller side if the room plays teams; keep watching,
-// so a room that starts teams later pulls you in too.
-setInterval(() => {
-  if (myChoice !== 'auto' || myTeam || !teamMode()) return
+// Auto: join the smaller side (Dogs when you're first), once everyone's meta has arrived; it repeats
+// every 2 s.
+setTimeout(() => {
+  if (myChoice !== 'auto' || myTeam) return
   myTeam = smallerTeam([...peers.keys()].filter((id) => !isAce(id)).map((id) => metas.get(id)?.team))
   sendMeta()
-}, 1500)
+}, 2500)
 setTimeout(() => {
   if (peers.size + 1 > ROOM_CAP)
     (analytics.track('room_full', { room }), location.replace(`?room=${randomRoom()}&full=${encodeURIComponent(room)}`))
