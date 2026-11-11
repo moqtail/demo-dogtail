@@ -43,6 +43,7 @@ describe('trained pilot', () => {
     const obs = cases[0]!.obs
     expect(decide(brain, obs, () => 0)).toBe(0)
     expect(decide(brain, obs, () => 0.999999)).toBe(11)
+    expect(decide(brain, obs, () => 0.49, 1e9)).toBe(5) // a huge temp: all 12 equally likely
     expect(controls(0)).toEqual({ turn: -1, boost: false, fire: false })
     expect(controls(11)).toEqual({ turn: 1, boost: true, fire: true })
     expect(controls(4)).toEqual({ turn: 0, boost: true, fire: false })
