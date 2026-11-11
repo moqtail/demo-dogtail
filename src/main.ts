@@ -63,7 +63,7 @@ declare const __CERT_HASH__: string // injected by vite.config.ts
 const params = new URLSearchParams(location.search)
 // With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
 // The join screen can change it (see the Relay field).
-const DEFAULT_RELAY = __CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.n1.fra.moqtail.dev'
+const DEFAULT_RELAY = __CERT_HASH__ ? `moqt://${location.hostname}:4433` : 'moqt://relay.moqtail.dev'
 const me = Math.random().toString(16).slice(2, 8)
 const analytics = startAnalytics(me) // at page load, so visits that never join count too
 const debug = params.has('debug') // ?debug: network stats shown from the start

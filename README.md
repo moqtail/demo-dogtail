@@ -2,7 +2,7 @@
 
 A multiplayer top-down plane shooter that runs entirely over a MOQtail relay. There is no game server.
 
-Play at **https://dogtail.moqtail.dev**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.n1.fra.moqtail.dev` by default (the join screen's **Relay** field, or `?relay=` in the link, picks another; invite links carry it); nothing to install, and phones and tablets get on-screen buttons.
+Play at **https://dogtail.moqtail.dev**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.moqtail.dev` by default, a cluster that connects each player to a nearby datacenter (the join screen's **Relay** field, or `?relay=` in the link, picks another; invite links carry it); nothing to install, and phones and tablets get on-screen buttons.
 
 Built with [MOQtail](https://github.com/moqtail/moqtail), a Media over QUIC (MoQ) library and relay.
 
@@ -21,7 +21,7 @@ npm test
 
 On other devices, open `https://<your-ip>:5174` and click through the certificate warning once (Advanced → Proceed). Vite puts the certificate's SHA-256 hash into the page, which passes it to WebTransport as `serverCertificateHashes`, so no CA needs installing. Browsers accept that only for ECDSA certificates valid for 14 days or less: rerun `make-cert.sh` when it expires and restart the relay and Vite. Safari needs iOS/macOS 26.4 or later.
 
-Without a certificate in `cert/`, `npm run dev` serves plain http and uses the public relay `relay.n1.fra.moqtail.dev`, which is fine for a quick look.
+Without a certificate in `cert/`, `npm run dev` serves plain http and uses the public relay `relay.moqtail.dev`, which is fine for a quick look.
 
 ```bash
 npm run build      # static site in dist/
