@@ -592,6 +592,7 @@ const dropAce = (id: string) => {
   aces.delete(id) // it goes quiet; other players drop it after 3 s
   peers.delete(id)
   metas.delete(id)
+  stats?.forget(id) // the 3 s timeout that would clear its row only sees `peers`
 }
 aceLevel.addEventListener('change', () => {
   aceLevel.blur()
