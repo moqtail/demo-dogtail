@@ -52,7 +52,18 @@ export type EventMsg =
   | { t: 'pic'; d: string }
 
 /** Who a player is and their score. */
-export type MetaMsg = { name: string; color: string; pilot: string; kills: number; deaths: number }
+export type MetaMsg = {
+  name: string
+  color: string
+  pilot: string
+  kills: number
+  deaths: number
+  /** '' plays alone. A room is a team game once any person in it picks a side. */
+  team?: Team
+  /** Kills in round `round` (see roundAt), which the team bar adds up. */
+  round?: number
+  rk?: number
+}
 export const COLORS = ['#60a5fa', '#f87171', '#4ade80', '#facc15', '#c084fc', '#fb923c', '#2dd4bf', '#f472b6']
 /** Who sits in the cockpit: '' is nobody, just the jet. */
 export const PILOTS = ['', '🐸', '🦆', '🐱', '🦊', '🐼', '🤖', '💀']
@@ -67,7 +78,43 @@ export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
     pilot: PILOTS.includes(m.pilot as string) ? (m.pilot as string) : '',
     kills: n(m.kills),
     deaths: n(m.deaths),
+    team: m.team === 'dogs' || m.team === 'cats' ? m.team : '',
+    round: n(m.round),
+    rk: n(m.rk),
   }
+}
+
+export type Team = '' | 'dogs' | 'cats'
+export const TEAMS = {
+  dogs: { icon: '🐶', name: 'Dogs', color: '#ef4444' },
+  cats: { icon: '🐱', name: 'Cats', color: '#3b82f6' },
+} as const
+/** Same side: bullets pass through, and aces leave them alone. Players without a team have no allies. */
+export const allies = (a: Team | undefined, b: Team | undefined) => !!a && a === b
+/** The side with fewer players, where newcomers and aces go; dogs on a tie. */
+export function smallerTeam(teams: (Team | undefined)[]): 'dogs' | 'cats' {
+  const count = (t: Team) => teams.filter((x) => x === t).length
+  return count('cats') < count('dogs') ? 'cats' : 'dogs'
+}
+
+/** Team rounds follow the shared clock, so every player agrees when one ends without a referee. */
+export const ROUND_MS = 180_000
+export const roundAt = (t: number) => Math.floor(t / ROUND_MS)
+/** A player's kills this round; starts over when the round does. */
+export class RoundKills {
+  round = -1
+  kills = 0
+  at(t: number) {
+    const r = roundAt(t)
+    if (r !== this.round) [this.round, this.kills] = [r, 0]
+    return this
+  }
+}
+/** Each side's kills in `round`, from the metas of the players in it. */
+export function teamScores(players: MetaMsg[], round: number) {
+  const score = { dogs: 0, cats: 0 }
+  for (const p of players) if (p.team && p.round === round) score[p.team] += p.rk ?? 0
+  return score
 }
 
 /** Aces hosted in a player's tab (main.ts) have ids starting with "z"; a player's id is hex. */
@@ -347,10 +394,18 @@ export function wrapDist(ax: number, ay: number, bx: number, by: number): number
   return Math.hypot(Math.min(dx, W - dx), Math.min(dy, H - dy))
 }
 
-/** Index of the first bullet not fired by `self` that hits `p`, or -1. A shielded plane can't be hit. */
-export function findHit(p: Plane, self: string, bullets: Bullet[]): number {
+/**
+ * Index of the first bullet not fired by `self` (or by an ally) that hits `p`, or -1. A shielded plane
+ * can't be hit.
+ */
+export function findHit(
+  p: Plane,
+  self: string,
+  bullets: Bullet[],
+  ally: (id: string) => boolean = () => false,
+): number {
   if (p.shielded) return -1
-  return bullets.findIndex((b) => b.owner !== self && wrapDist(p.x, p.y, b.x, b.y) < HIT_RADIUS)
+  return bullets.findIndex((b) => b.owner !== self && !ally(b.owner) && wrapDist(p.x, p.y, b.x, b.y) < HIT_RADIUS)
 }
 
 const enc = new TextEncoder()

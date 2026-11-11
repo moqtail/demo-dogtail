@@ -16,7 +16,20 @@
 
 /** Drawing the game on the canvas: reads the state it is given, changes nothing. */
 
-import { edgePoint, H, POWER_ICON, W, wrapDelta, type Bullet, type MetaMsg, type Plane, type PowerUp } from './game'
+import {
+  allies,
+  edgePoint,
+  H,
+  POWER_ICON,
+  TEAMS,
+  W,
+  wrapDelta,
+  type Bullet,
+  type MetaMsg,
+  type Plane,
+  type PowerUp,
+  type Team,
+} from './game'
 
 /** Canvas px per arena unit, and the arena units in view. */
 export type View = { s: number; w: number; h: number }
@@ -47,11 +60,14 @@ export type Scene = {
     pilot: string
     pic: CanvasImageSource | undefined
     spawnedAt: number
+    team: Team
   }
   showMap: boolean
 }
 
 const GREY = '#9ca3af' // a player whose meta hasn't arrived yet
+/** On the minimap and the edge arrows, a player on a side shows in its color. */
+const mapColor = (m: MetaMsg | undefined) => (m?.team ? TEAMS[m.team].color : (m?.color ?? GREY))
 
 export function drawFrame(ctx: CanvasRenderingContext2D, sc: Scene) {
   const { view, cam } = sc
@@ -84,10 +100,10 @@ function drawScene(ctx: CanvasRenderingContext2D, sc: Scene) {
     const m = sc.metas.get(id)
     const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
     if (peer.shown.hp > 0)
-      drawPlane(ctx, sc, peer.shown, m?.color ?? GREY, label, sc.pics?.get(id) ?? m?.pilot ?? '', id)
+      drawPlane(ctx, sc, peer.shown, m?.color ?? GREY, label, sc.pics?.get(id) ?? m?.pilot ?? '', id, m?.team)
   }
   if (sc.me.alive) {
-    drawPlane(ctx, sc, sc.me.plane, sc.me.color, 'you', sc.me.pic ?? sc.me.pilot, sc.me.id)
+    drawPlane(ctx, sc, sc.me.plane, sc.me.color, 'you', sc.me.pic ?? sc.me.pilot, sc.me.id, sc.me.team)
     drawPulse(ctx, sc)
   }
   for (const b of sc.booms) drawBoom(ctx, b)
@@ -117,6 +133,7 @@ function drawPlane(
   /** An emoji, a picture, or '' for an empty cockpit. */
   pilot: string | CanvasImageSource,
   id: string,
+  team: Team | undefined,
 ) {
   const r = sc.reactions?.get(id)
   if (r && performance.now() - r.at < REACT_SHOW) {
@@ -134,8 +151,16 @@ function drawPlane(
     ctx.globalAlpha = 0.3 // its player is in another tab
   else if (p.shielded && performance.now() % 300 < 150) ctx.globalAlpha = 0.3 // blinks while it can't be hit
   ctx.translate(p.x, p.y)
+  if (team) {
+    // The side's ring around the plane, and its icon before the name.
+    ctx.strokeStyle = TEAMS[team].color
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(0, 0, 22, 0, Math.PI * 2)
+    ctx.stroke()
+  }
   ctx.fillStyle = '#e5e7eb'
-  ctx.fillText(`${label} ${'♥'.repeat(p.hp)}`, -20, -22)
+  ctx.fillText(`${team ? TEAMS[team].icon + ' ' : ''}${label} ${'♥'.repeat(p.hp)}`, -20, -26)
   ctx.rotate(p.a)
   ctx.fillStyle = color
   ctx.beginPath()
@@ -198,12 +223,12 @@ function drawPulse(ctx: CanvasRenderingContext2D, sc: Scene) {
   ctx.globalAlpha = 1
 }
 
-/** Zoomed in: a small arrow at the screen edge toward each player out of view, in their color. */
+/** Zoomed in: a small arrow at the screen edge toward each player out of view, in their color; teammates get none. */
 function drawArrows(ctx: CanvasRenderingContext2D, sc: Scene) {
   const { view, cam } = sc
   ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2) * view.s, (view.h / 2) * view.s) // origin at centre
   for (const [id, peer] of sc.peers) {
-    if (peer.shown.hp <= 0) continue
+    if (peer.shown.hp <= 0 || allies(sc.me.team, sc.metas.get(id)?.team)) continue
     const dx = wrapDelta(cam.x, peer.shown.x, W)
     const dy = wrapDelta(cam.y, peer.shown.y, H)
     const at = edgePoint(dx, dy, view.w / 2, view.h / 2, 16)
@@ -212,7 +237,7 @@ function drawArrows(ctx: CanvasRenderingContext2D, sc: Scene) {
     ctx.translate(at.x, at.y)
     ctx.rotate(Math.atan2(dy, dx))
     ctx.globalAlpha = peer.shown.away ? 0.3 : 0.9
-    ctx.fillStyle = sc.metas.get(id)?.color ?? GREY
+    ctx.fillStyle = mapColor(sc.metas.get(id))
     ctx.beginPath()
     ctx.moveTo(10, 0)
     ctx.lineTo(-6, -7)
@@ -255,12 +280,12 @@ function drawMap(ctx: CanvasRenderingContext2D, sc: Scene) {
   for (const [id, peer] of sc.peers) {
     if (peer.shown.hp <= 0) continue
     ctx.globalAlpha = peer.shown.away ? 0.3 : 1
-    dot(peer.shown, sc.metas.get(id)?.color ?? GREY, 2)
+    dot(peer.shown, mapColor(sc.metas.get(id)), 2)
   }
   ctx.globalAlpha = 1
   if (sc.me.alive) {
     dot(sc.me.plane, '#f9fafb', 4.5) // a white ring around your color, so you stand out
-    dot(sc.me.plane, sc.me.color, 3)
+    dot(sc.me.plane, sc.me.team ? TEAMS[sc.me.team].color : sc.me.color, 3)
   }
 }
 

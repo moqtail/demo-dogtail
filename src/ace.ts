@@ -22,6 +22,9 @@
 
 import { controls, decide, observe, type Brain } from './brain'
 import {
+  allies,
+  RoundKills,
+  type Team,
   ARMOR,
   FIRE_COOLDOWN,
   maxHpFor,
@@ -65,6 +68,10 @@ export class Ace {
   plane: Plane = spawn()
   kills = 0
   deaths = 0
+  /** Its side in a team room; the hosting tab sets it. */
+  team: Team = ''
+  #roundKills = new RoundKills()
+  #teams = new Map<string, Team | undefined>()
   #bullets: Bullet[] = []
   #shield = SPAWN_SHIELD
   #armor = 0
@@ -91,20 +98,26 @@ export class Ace {
   }
 
   meta() {
-    this.send.sendMeta({ ...this.look, kills: this.kills, deaths: this.deaths })
+    const { round, kills: rk } = this.#roundKills.at(this.#now())
+    this.send.sendMeta({ ...this.look, kills: this.kills, deaths: this.deaths, team: this.team, round, rk })
   }
+
+  #now = () => Date.now() + (this.clock.offset ?? 0)
+  #ally = (id: string) => allies(this.team, this.#teams.get(id))
 
   #stamp = () => (this.clock.offset === undefined ? undefined : Date.now() + this.clock.offset)
 
   /** A message from another player, from the network or from this tab. */
   hear(from: string, w: WireMsg) {
     if (w.t === 'pos') this.#peers.set(from, { p: w.p, seen: Date.now() })
+    else if (w.t === 'meta') this.#teams.set(from, w.m.team)
     else if (w.t === 'shot')
       this.#bullets.push(...stepBullets([{ ...w, age: 0, owner: from }], shotLag(w.ts, Date.now(), this.clock.offset)))
     else if (w.t === 'grab') this.#grabbed.add(w.k)
     else if (w.t === 'kill' && w.by === this.id && !this.#killsSeen.has(`${from}:${w.n}`)) {
       this.#killsSeen.add(`${from}:${w.n}`) // a kill is sent three times; count it once
       this.kills++
+      this.#roundKills.at(this.#now()).kills++
       this.meta()
     }
   }
@@ -117,8 +130,10 @@ export class Ace {
     const { noise, every, temp } = LEVELS[this.level]
     let act = this.#act
     if (this.brain && this.#ticks++ % every === 0) {
-      const others = [...this.#peers.values()]
-        .filter(({ p }) => p.hp > 0 && !p.away)
+      // Teammates are left out: it neither chases them nor dodges their bullets.
+      const others = [...this.#peers]
+        .filter(([id, { p }]) => p.hp > 0 && !p.away && !this.#ally(id))
+        .map(([, peer]) => peer)
         .map(({ p, seen }) => predict(p, (now - seen) / 1000))
         .map((p) => ({ ...p, x: p.x + gauss(noise), y: p.y + gauss(noise) }))
       const me = {
@@ -128,9 +143,8 @@ export class Ace {
         cooldown: this.#cooldown,
         deadFor: this.#deadFor,
       }
-      act = this.#act = controls(
-        decide(this.brain, observe({ me, others, bullets: this.#bullets, drops }), Math.random, temp),
-      )
+      const bullets = this.#bullets.filter((b) => !this.#ally(b.owner))
+      act = this.#act = controls(decide(this.brain, observe({ me, others, bullets, drops }), Math.random, temp))
     } else if (!this.brain) {
       if (Math.random() < 0.05) this.#turn = Math.floor(Math.random() * 3) - 1 // now and then: left, straight or right
       act = { turn: this.#turn, boost: false, fire: Math.random() < 0.1 }
@@ -173,7 +187,7 @@ export class Ace {
       this.send.sendEvent({ t: 'shot', x: p.x, y: p.y, a: p.a, ts: this.#stamp() })
     }
     this.#bullets = stepBullets(this.#bullets, dt)
-    const hit = alive ? findHit(p, this.id, this.#bullets) : -1
+    const hit = alive ? findHit(p, this.id, this.#bullets, this.#ally) : -1
     if (hit >= 0) {
       const by = this.#bullets[hit]!.owner
       this.#bullets.splice(hit, 1)
