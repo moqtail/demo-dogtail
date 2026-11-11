@@ -70,6 +70,9 @@ export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
   }
 }
 
+/** Aces hosted in a player's tab (main.ts) have ids starting with "z"; a player's id is hex. */
+export const isAce = (id: string) => id.startsWith('z')
+
 /** Quick reactions, keys 1–4: a fixed set, so nobody can show arbitrary text over other planes. */
 export const REACTIONS = ['😂', '🔥', '👋', '💢']
 

@@ -125,16 +125,33 @@ export async function connect(
   const { response } = await client.subscribeTracks(Tuple.fromUtf8Path(roomNs))
   if (response instanceof RequestError) throw new Error('relay rejected SUBSCRIBE_TRACKS')
 
-  // One group per message: each stands alone, and the group numbers let receivers count losses.
+  return {
+    joinRtt,
+    ...senders(sendObj),
+    /**
+     * Another player on this connection, such as an ace hosted in this tab: its own namespace and
+     * `game` track, exactly as a player on its own connection. The relay doesn't send a session its
+     * own tracks back, so the caller passes its messages to this tab's game itself.
+     */
+    async player(id: string) {
+      const ns = Tuple.fromUtf8Path(`${roomNs}/${id}`)
+      await client.publishNamespace(ns)
+      return senders(await openTrack(client, ns, 'game', 0))
+    },
+  }
+}
+
+/** A player's messages on its track. One group per message: each stands alone, and the group numbers let receivers count losses. */
+function senders(sendObj: (group: bigint, object: bigint, payload: Uint8Array) => void) {
   let group = 0n
   const send = (w: WireMsg) => sendObj(group++, 0n, encode(w))
   return {
-    joinRtt,
     sendPos: (p: PosMsg) => send({ t: 'pos', p }),
     sendEvent: (m: EventMsg) => send(m),
     sendMeta: (m: MetaMsg) => send({ t: 'meta', m }),
   }
 }
+export type Senders = ReturnType<typeof senders>
 
 /**
  * Our clock's offset from a shared reference, so shot times mean the same on every device: a few
