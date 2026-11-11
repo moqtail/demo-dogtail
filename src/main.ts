@@ -38,7 +38,9 @@ import {
   packPic,
   unpackPic,
   viewScale,
+  ARMOR,
   PICKUP_RADIUS,
+  RAPID,
   POWER_ICON,
   powerUpsAt,
   REACTIONS,
@@ -172,8 +174,6 @@ let drops: PowerUp[] = []
 const grabbed = new Set<string>()
 let armorFor = 0 // 🛡️: can't be hit; unlike the spawn shield, firing keeps it
 let rapidFor = 0 // ⚡: fires twice as fast
-const ARMOR = 5
-const RAPID = 6
 
 // Kill feed: the last few kills, top left, each fading after FEED_SHOW ms.
 const feedList = document.getElementById('feed')!
