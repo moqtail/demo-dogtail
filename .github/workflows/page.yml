@@ -1,0 +1,53 @@
+name: Deploy (Pages)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  page:
+    if: ${{ github.repository_owner == 'moqtail' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: lts/*
+
+      - name: Get build information
+        run: |
+          commit=$(git rev-parse --short HEAD)
+          date=$(date +'%Y-%m-%d')
+          echo "VITE_BUILD_COMMIT=$commit" >> $GITHUB_ENV
+          echo "VITE_BUILD_DATE=$date" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          corepack install && corepack enable
+          npm ci
+
+      - name: Build the demo page
+        run: npm run build
+
+      - name: Deploy
+        id: deploy
+        uses: cloudflare/wrangler-action@4e88846969242f7752bcfdaf5511bfbb3985ca47 # v4.1.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: deploy --name dogtail --assets dist --compatibility-date 2026-07-13

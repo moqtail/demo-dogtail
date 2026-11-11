@@ -1,0 +1,45 @@
+name: Miscellaneous Checks
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  editorconfig:
+    name: EditorConfig Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Problem Matchers
+        run: echo "::add-matcher::${{ github.workspace }}/.github/matchers.json"
+
+      - name: Install EditorConfig CLI
+        uses: editorconfig-checker/action-editorconfig-checker@51f63319f592f97930c73d9c46184d20bd206393 # v3.0.0
+
+      - name: Run EditorConfig Check
+        run: editorconfig-checker -format gcc
+
+  license:
+    name: License Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.21"
+
+      - name: Install addlicense
+        run: go install github.com/google/addlicense@latest
+
+      - name: Check Licenses
+        run: |
+          addlicense -check \
+            -ignore "*" -ignore "**/vite*" -ignore "**/tsup*" \
+            -v -c "The MOQtail Authors" \
+            $(git ls-files '*.rs' '*.tsx' '*.ts' '*.js' '*.sh' '*.py')
