@@ -119,10 +119,10 @@ export function forward(brain: Brain, obs: number[]): number[] {
 
 /**
  * An action, drawn from the network's odds as in training (a pilot that always takes the top one is
- * easy to read). `rand` is for tests.
+ * easy to read). A `temp` above 1 evens the odds, so worse actions come up more often. `rand` is for tests.
  */
-export function decide(brain: Brain, obs: number[], rand = Math.random): number {
-  const logits = forward(brain, obs)
+export function decide(brain: Brain, obs: number[], rand = Math.random, temp = 1): number {
+  const logits = forward(brain, obs).map((l) => l / temp)
   const top = Math.max(...logits)
   const odds = logits.map((l) => Math.exp(l - top))
   let r = rand() * odds.reduce((a, b) => a + b, 0)
