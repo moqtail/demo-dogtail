@@ -16,11 +16,13 @@
 
 /** Pure game rules: no DOM, no network, so they can be unit tested. */
 
-export const W = 1600
-export const H = 1000
+export const W = 2400
+export const H = 1500
 export const SPEED = 180
 export const BOOST = 320
 export const TURN = 3 // rad/s
+export const DRIFT_SPEED = 80 // drifting (↓): slow and turning hard, for tight circles round a power-up
+export const DRIFT_TURN = 5 // rad/s
 export const BULLET_SPEED = 520
 export const BULLET_LIFE = 1.2 // s
 export const FIRE_COOLDOWN = 0.2 // s
@@ -36,7 +38,7 @@ export const RESPAWN_DELAY = 2 // s; must stay under the 3 s silence after which
 export type Plane = { x: number; y: number; a: number; hp: number; shielded?: boolean; away?: boolean }
 export type Bullet = { x: number; y: number; a: number; age: number; owner: string }
 /** `target` is a heading (rad) to steer toward, e.g. from the mouse; it is used when no turn key is held. */
-export type Input = { left: boolean; right: boolean; boost: boolean; target?: number }
+export type Input = { left: boolean; right: boolean; boost: boolean; drift?: boolean; target?: number }
 
 /** Messages a player sends; they all travel on one track, `game`, as WireMsg. */
 /** `ts`: when sent, on the shared clock (net.ts syncClock), for delay and jitter stats; absent if not synced. */
@@ -128,10 +130,11 @@ export type PowerUp = { key: string; x: number; y: number; kind: PowerKind }
 export const POWER_ICON: Record<PowerKind, string> = { shield: '🛡️', rapid: '⚡', heart: '❤️' }
 export const POWER_SLOT = 8000 // ms between drops
 export const POWER_LIFE = 16000 // ms a drop stays if nobody grabs it
-export const POWER_PER_SLOT = 2
+export const POWER_PER_SLOT = 4 // the arena is 2.25× its first size, so drops stay about as dense
 export const PICKUP_RADIUS = 24
 export const ARMOR = 5 // s of 🛡️: can't be hit; unlike the spawn shield, firing keeps it
 export const RAPID = 6 // s of ⚡: fires twice as fast
+export const STREAK = 5 // kills in a row, without being shot down, that earn a free ⚡
 
 /** A small seeded random generator, so every player derives the same drops. */
 function seeded(text: string) {
@@ -273,18 +276,19 @@ export function spawn(hp = MAX_HP, others: { x: number; y: number }[] = []): Pla
   return { ...best, a: Math.random() * Math.PI * 2, hp }
 }
 
-/** Heading `a` turned toward `target` by at most TURN * dt, the short way round. */
-export function turnToward(a: number, target: number, dt: number): number {
+/** Heading `a` turned toward `target` by at most rate * dt, the short way round. */
+export function turnToward(a: number, target: number, dt: number, rate = TURN): number {
   const diff = Math.atan2(Math.sin(target - a), Math.cos(target - a))
-  const max = TURN * dt
+  const max = rate * dt
   return a + Math.max(-max, Math.min(max, diff))
 }
 
 export function stepPlane(p: Plane, input: Input, dt: number): void {
+  const turn = input.drift ? DRIFT_TURN : TURN
   if (input.left || input.right || input.target === undefined)
-    p.a += ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * TURN * dt
-  else p.a = turnToward(p.a, input.target, dt)
-  const v = input.boost ? BOOST : SPEED
+    p.a += ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * turn * dt
+  else p.a = turnToward(p.a, input.target, dt, turn)
+  const v = input.drift ? DRIFT_SPEED : input.boost ? BOOST : SPEED
   p.x = wrap(p.x + Math.cos(p.a) * v * dt, W)
   p.y = wrap(p.y + Math.sin(p.a) * v * dt, H)
 }

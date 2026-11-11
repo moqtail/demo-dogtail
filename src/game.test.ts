@@ -44,6 +44,10 @@ import {
   stepBullets,
   stepPlane,
   turnToward,
+  DRIFT_SPEED,
+  DRIFT_TURN,
+  SPEED,
+  TURN,
   wrapDist,
   allies,
   smallerTeam,
@@ -75,6 +79,14 @@ describe('game rules', () => {
     const p = { x: 100, y: 100, a: 0, hp: 3 }
     stepPlane(p, { left: true, right: false, boost: false, target: 1 }, 0.1)
     expect(p.a).toBeCloseTo(-0.3)
+  })
+
+  it('drifts slower and turns harder, for a tighter circle', () => {
+    const p = { x: 100, y: 100, a: 0, hp: 3 }
+    stepPlane(p, { left: false, right: true, boost: true, drift: true }, 0.1)
+    expect(p.a).toBeCloseTo(DRIFT_TURN * 0.1)
+    expect(Math.hypot(p.x - 100, p.y - 100)).toBeCloseTo(DRIFT_SPEED * 0.1)
+    expect(DRIFT_SPEED / DRIFT_TURN).toBeLessThan(SPEED / TURN / 3) // turning radius
   })
 
   it('measures distance across the wrap', () => {
@@ -218,13 +230,13 @@ describe('game rules', () => {
     expect(a).toHaveLength((POWER_LIFE / POWER_SLOT) * POWER_PER_SLOT)
     expect(a.map((p) => p.key)).not.toEqual(powerUpsAt('falcon-1', t + POWER_SLOT).map((p) => p.key)) // the oldest expires
     expect(powerUpsAt('hawk-2', t)[0]).not.toEqual(a[0]) // other rooms differ
-    for (const p of a) expect(p.x >= 0 && p.x < 1600 && p.y >= 0 && p.y < 1000).toBe(true)
+    for (const p of a) expect(p.x >= 0 && p.x < W && p.y >= 0 && p.y < H).toBe(true)
   })
 
   it('checks every message from other players before it is used', () => {
-    expect(cleanPos({ x: 1700, y: -10, a: 1, hp: 3, away: 'yes' })).toEqual({
+    expect(cleanPos({ x: W + 100, y: -10, a: 1, hp: 3, away: 'yes' })).toEqual({
       x: 100,
-      y: 990,
+      y: H - 10,
       a: 1,
       hp: 3,
       shielded: false,
