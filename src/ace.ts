@@ -45,6 +45,22 @@ import {
 } from './game'
 import type { Senders } from './net'
 
+/**
+ * How good an ace is: the same network, weakened at play time (train/evaluate.py measures each against
+ * the rule-based pilot it trained with, and must use the same numbers).
+ *   noise: px of error on where it sees other planes; every: decides every `every` x 100 ms, holding
+ *   its last action in between; temp: above 1, worse actions come up more often.
+ */
+export const LEVELS = {
+  easy: { noise: 80, every: 4, temp: 3 }, // kills per death vs the rule-based pilot: 0.45
+  moderate: { noise: 40, every: 3, temp: 2 }, // 0.93
+  hard: { noise: 6, every: 1, temp: 1 }, // 3.14
+}
+export type Level = keyof typeof LEVELS
+
+/** Gaussian noise (Box-Muller). */
+const gauss = (sd: number) => sd * Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random())
+
 export class Ace {
   plane: Plane = spawn()
   kills = 0
@@ -59,6 +75,8 @@ export class Ace {
   #peers = new Map<string, { p: Plane; seen: number }>()
   #grabbed = new Set<string>()
   #killsSeen = new Set<string>()
+  #ticks = 0
+  #act = { turn: 0, boost: false, fire: false } // held between decisions
 
   constructor(
     readonly id: string,
@@ -67,6 +85,7 @@ export class Ace {
     readonly brain: Brain | undefined,
     readonly send: Senders,
     readonly clock: ClockSync,
+    readonly level: Level = 'hard',
   ) {
     this.meta()
   }
@@ -95,11 +114,13 @@ export class Ace {
     const now = Date.now()
     for (const [id, { seen }] of this.#peers) if (now - seen > 3000) this.#peers.delete(id)
     const drops = powerUpsAt(this.room, now + (this.clock.offset ?? 0)).filter((d) => !this.#grabbed.has(d.key))
-    let act: { turn: number; boost: boolean; fire: boolean }
-    if (this.brain) {
+    const { noise, every, temp } = LEVELS[this.level]
+    let act = this.#act
+    if (this.brain && this.#ticks++ % every === 0) {
       const others = [...this.#peers.values()]
         .filter(({ p }) => p.hp > 0 && !p.away)
         .map(({ p, seen }) => predict(p, (now - seen) / 1000))
+        .map((p) => ({ ...p, x: p.x + gauss(noise), y: p.y + gauss(noise) }))
       const me = {
         ...this.plane,
         armor: this.#armor,
@@ -107,8 +128,10 @@ export class Ace {
         cooldown: this.#cooldown,
         deadFor: this.#deadFor,
       }
-      act = controls(decide(this.brain, observe({ me, others, bullets: this.#bullets, drops })))
-    } else {
+      act = this.#act = controls(
+        decide(this.brain, observe({ me, others, bullets: this.#bullets, drops }), Math.random, temp),
+      )
+    } else if (!this.brain) {
       if (Math.random() < 0.05) this.#turn = Math.floor(Math.random() * 3) - 1 // now and then: left, straight or right
       act = { turn: this.#turn, boost: false, fire: Math.random() < 0.1 }
     }
