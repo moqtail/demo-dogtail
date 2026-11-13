@@ -17,8 +17,12 @@
 /** Synthesized sound effects: no audio files to ship. */
 
 const audio = new AudioContext()
-// Browsers start audio suspended until the user interacts with the page.
-for (const ev of ['keydown', 'pointerdown'] as const) addEventListener(ev, () => void audio.resume(), { once: true })
+// Browsers start audio suspended until the user interacts with the page. iOS only allows it when a touch
+// ends, not when it starts, and suspends it again whenever the app goes to the background, so every
+// key, tap and touch end tries again until it is running.
+const wake = () => void (audio.state !== 'running' && audio.resume().catch(() => {}))
+for (const ev of ['keydown', 'pointerup', 'touchend', 'click'] as const)
+  addEventListener(ev, wake, { capture: true, passive: true })
 
 /** A tone sliding from `from` Hz to `to` Hz over `seconds`, fading out. */
 function sweep(type: OscillatorType, from: number, to: number, seconds: number, volume: number) {
