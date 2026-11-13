@@ -408,6 +408,23 @@
         justify-content: space-between;
         gap: 12px;
       }
+      /* Phones: smaller, long names cut short, and a row to open the rest. */
+      #scores.short {
+        font-size: 11px;
+        min-width: 0;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      #scores.short li span:first-child {
+        max-width: 110px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #scores .more {
+        justify-content: center;
+        color: #94a3b8;
+      }
       #stats {
         position: fixed;
         top: 32px;

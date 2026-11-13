@@ -783,7 +783,11 @@ if (myPic) {
 }
 
 // Scoreboard, best first. 4 Hz is plenty for text and keeps DOM work out of the frame loop.
+// On a phone it starts short (top 3 and you), as it covers the game; a tap opens the top 10 and back.
 const scores = document.getElementById('scores')!
+let boardOpen = !matchMedia('(pointer: coarse)').matches
+scores.classList.toggle('short', !boardOpen)
+scores.addEventListener('click', () => (boardOpen = !boardOpen))
 setInterval(() => {
   const all = [
     { name: `${myName} (you)`, color: myColor, kills, deaths, team: myTeam, you: true },
@@ -792,10 +796,16 @@ setInterval(() => {
       you: false,
     })),
   ].sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)
-  // Top 10, plus your own row (with your rank) when you are further down.
+  // The top ones, plus your own row (with your rank) when you are further down.
+  const top = boardOpen ? 10 : 3
   const mine = all.findIndex((r) => r.you)
-  const shown = all.slice(0, 10).map((r, i) => ({ ...r, rank: i + 1 }))
-  if (mine >= 10) shown.push({ ...all[mine]!, rank: mine + 1 })
+  const shown = all.slice(0, top).map((r, i) => ({ ...r, rank: i + 1 }))
+  if (mine >= top) shown.push({ ...all[mine]!, rank: mine + 1 })
+  const more = Math.min(all.length, 10) - shown.length
+  const toggle = Object.assign(document.createElement('li'), {
+    className: 'more',
+    textContent: boardOpen ? '▴' : `+${more} more ▾`,
+  })
   scores.replaceChildren(
     ...shown.map((r) => {
       const li = document.createElement('li')
@@ -805,6 +815,7 @@ setInterval(() => {
       li.append(name, Object.assign(document.createElement('span'), { textContent: `${r.kills} / ${r.deaths}` }))
       return li
     }),
+    ...(scores.matches('.short') && (more > 0 || boardOpen) ? [toggle] : []),
   )
   showTeams()
 }, 250)
