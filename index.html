@@ -38,7 +38,7 @@
         outline: 2px solid #334155;
         outline-offset: -2px;
       }
-      /* On-screen controls, only on touch screens: turn with the left thumb, fire with the right. */
+      /* On-screen controls, only on touch screens: steer with the left thumb, fire with the right. */
       #touch {
         display: none;
       }
@@ -65,18 +65,41 @@
       #touch button.held {
         background: #475569cc;
       }
-      #touch [data-key='KeyA'] {
-        left: 24px;
+      /* The left half: the thumb lands anywhere and the stick's base appears there. */
+      #stick {
+        position: fixed;
+        left: 0;
+        top: 56px;
+        bottom: 0;
+        width: 50%;
+        touch-action: none;
       }
-      #touch [data-key='KeyD'] {
-        left: 128px;
+      #stick .base,
+      #stick .knob {
+        position: absolute;
+        border-radius: 50%;
+        translate: -50% -50%;
+        pointer-events: none;
+        left: 100px;
+        top: calc(100% - 110px);
       }
-      #touch [data-key='KeyW'] {
-        left: 76px;
-        bottom: 128px;
-        width: 72px;
-        height: 72px;
-        font-size: 22px;
+      #stick .base {
+        width: 120px; /* twice STICK_R in main.ts: pushing past the ring boosts */
+        height: 120px;
+        border: 2px solid #64748b;
+        background: #1e293b66;
+      }
+      #stick .knob {
+        width: 56px;
+        height: 56px;
+        background: #94a3b8aa;
+      }
+      #stick:not(.held) .base,
+      #stick:not(.held) .knob {
+        opacity: 0.4; /* resting bottom left, where the thumb usually goes */
+      }
+      #stick.boost .base {
+        border-color: #fbbf24;
       }
       #touch [data-key='ArrowDown'] {
         right: 48px;
@@ -537,9 +560,10 @@
       <p id="powered">Powered by <a href="https://moqtail.dev" target="_blank" rel="noopener">MOQtail</a></p>
     </form>
     <div id="touch">
-      <button data-key="KeyA" aria-label="Turn left">◀</button>
-      <button data-key="KeyD" aria-label="Turn right">▶</button>
-      <button data-key="KeyW" aria-label="Boost">▲</button>
+      <div id="stick" role="application" aria-label="Steering: drag toward where to fly, past the ring to boost">
+        <div class="base"></div>
+        <div class="knob"></div>
+      </div>
       <button data-key="ArrowDown" aria-label="Drift">▼</button>
       <button data-key="Space" aria-label="Fire">FIRE</button>
     </div>
