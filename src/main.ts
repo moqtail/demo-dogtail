@@ -55,6 +55,7 @@ import {
   roundAt,
   ROUND_MS,
   smallerTeam,
+  sideAhead,
   TEAMS,
   teamScores,
   type Team,
@@ -629,6 +630,7 @@ spawnedAt = performance.now() // the first pulse plays once you're in, not behin
 // own track over this connection; when that player leaves or goes away, the next one takes over with
 // new aces. Ace ids start with "z", which a player's hex id never does.
 const ROOM_FILL = 4
+const TEAM_FILL = 3 // a side, so team rooms play 3 vs 3
 const aces = new Map<string, Ace>()
 // Settings → Aces: how good they are, or off. The host's choice decides for the room, so it is in their names.
 const aceLevel = document.getElementById('ace-level') as HTMLSelectElement
@@ -662,23 +664,31 @@ setInterval(async () => {
   const active = [...people.filter(([, p]) => !p.net.away).map(([id]) => id)]
   if (!document.hidden && performance.now() - last < AWAY_AFTER) active.push(me)
   const host = active.length && active.sort()[0] === me && aceLevel.value !== 'off'
-  // In a team room aces also even out the sides: as many as the bigger side is ahead by.
+  // In a team room aces fill both sides to TEAM_FILL, or to the bigger side's people, so they are even.
   const peopleTeams = [myTeam, ...people.map(([id]) => metas.get(id)?.team)]
   const teams = teamMode()
-  const ahead = Math.abs(
-    peopleTeams.filter((t) => t === 'dogs').length - peopleTeams.filter((t) => t === 'cats').length,
-  )
-  const want = host ? Math.max(0, ROOM_FILL - people.length - 1, teams ? ahead : 0) : 0
+  const dogs = peopleTeams.filter((t) => t === 'dogs').length
+  const cats = peopleTeams.filter((t) => t === 'cats').length
+  const fill = teams ? 2 * Math.max(TEAM_FILL, dogs, cats) - dogs - cats : ROOM_FILL - people.length - 1
+  const want = host ? Math.max(0, fill) : 0
   // Each ace takes the smaller side, counting the aces already there; out of team play, none.
   for (const ace of aces.values())
     if (!teams !== !ace.team) {
       ace.team = teams ? smallerTeam([...peopleTeams, ...[...aces.values()].map((a) => a.team)]) : ''
       ace.meta()
     }
+  const sides = [...peopleTeams, ...[...aces.values()].map((a) => a.team)]
+  const newestFirst = [...aces].reverse()
+  // People switched or left and a side is 2 ahead: one of its aces crosses over.
+  const crossing = teams && sideAhead(sides, 2)
+  const crosser = crossing && newestFirst.find(([, a]) => a.team === crossing)?.[1]
   hosting = true
   try {
     if (aces.size > want) {
-      dropAce([...aces.keys()].at(-1)!)
+      const bigger = teams && sideAhead(sides, 1) // leave from the bigger side, so they stay even
+      dropAce((newestFirst.find(([, a]) => a.team === bigger) ?? newestFirst[0]!)[0])
+    } else if (crosser) {
+      crosser.switchTo(crossing === 'dogs' ? 'cats' : 'dogs')
     } else if (aces.size < want) {
       brain ??= (await import('./brain.json')).default as Brain // only a hosting tab downloads the weights
       const id = `z${me}${aceCount++}`

@@ -97,6 +97,13 @@ export class Ace {
     this.meta()
   }
 
+  /** Moves to the other side to even them out; its kills this round stay behind, as a person's do. */
+  switchTo(team: Team) {
+    this.team = team
+    this.#roundKills.kills = 0
+    this.meta()
+  }
+
   meta() {
     const { round, kills: rk } = this.#roundKills.at(this.#now())
     this.send.sendMeta({ ...this.look, kills: this.kills, deaths: this.deaths, team: this.team, round, rk })
