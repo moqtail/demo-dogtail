@@ -43,7 +43,7 @@ The scoreboard (top right) shows the top 10 by kills / deaths, plus your own ran
 
 Full screen: the ⛶ button (top right) or **F**; phones lock to landscape where the browser allows. On iPhone, Safari has no fullscreen for pages: use Share → Add to Home Screen (keep "Open as Web App" on) and open the game from that icon; it runs without Safari's bars.
 
-Touch: ◀ ▶ turn and ▲ boost bottom left, FIRE and ▼ drift bottom right.
+Touch: put a thumb anywhere on the left half and drag the way you want to fly; past the ring you boost. FIRE and ▼ drift are bottom right.
 
 Small screens also get a minimap at the bottom centre (🗺 button or **M** to hide it).
 

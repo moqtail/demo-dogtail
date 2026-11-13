@@ -156,6 +156,47 @@ function toggleFullscreen() {
   }
 }
 
+// Touch steering: a floating stick. The thumb lands anywhere on the left half and that is the base;
+// the plane flies the way it is dragged (as it does toward the mouse), and past the ring it boosts.
+const STICK_R = 60 // px, the ring; under STICK_DEAD the plane holds its heading
+const STICK_DEAD = 12
+let stick: { a: number | undefined; boost: boolean } | null = null
+{
+  const zone = document.getElementById('stick')!
+  const [base, knob] = [zone.querySelector<HTMLElement>('.base')!, zone.querySelector<HTMLElement>('.knob')!]
+  const place = (el: HTMLElement, x: number, y: number) => ((el.style.left = `${x}px`), (el.style.top = `${y}px`))
+  const rest = () => {
+    for (const el of [base, knob]) el.style.left = el.style.top = '' // back to the resting spot in index.html
+    zone.classList.remove('held', 'boost')
+    stick = null
+  }
+  let origin = { x: 0, y: 0 }
+  let thumb = -1 // the steering pointer
+  zone.addEventListener('pointerdown', (e) => {
+    if (stick) return // one thumb steers; a second one on the left half is ignored
+    thumb = e.pointerId
+    zone.setPointerCapture(e.pointerId)
+    const r = zone.getBoundingClientRect()
+    origin = { x: e.clientX - r.left, y: e.clientY - r.top }
+    for (const el of [base, knob]) place(el, origin.x, origin.y)
+    zone.classList.add('held')
+    stick = { a: undefined, boost: false }
+  })
+  zone.addEventListener('pointermove', (e) => {
+    if (!stick || e.pointerId !== thumb) return
+    const r = zone.getBoundingClientRect()
+    const dx = e.clientX - r.left - origin.x
+    const dy = e.clientY - r.top - origin.y
+    const d = Math.hypot(dx, dy)
+    const k = Math.min(1, (STICK_R * 1.3) / d) // the knob follows the thumb a little past the ring
+    place(knob, origin.x + dx * k, origin.y + dy * k)
+    stick = { a: d > STICK_DEAD ? Math.atan2(dy, dx) : stick.a, boost: d > STICK_R }
+    zone.classList.toggle('boost', stick.boost)
+  })
+  for (const ev of ['pointerup', 'pointercancel'] as const)
+    zone.addEventListener(ev, (e) => e.pointerId === thumb && rest())
+}
+
 // Touch: on-screen buttons that hold down the matching key while pressed.
 // Safari zooms on a quick double tap even with touch-action: none; cancelling the touch stops it.
 // Pointer events still fire, so the buttons keep working.
@@ -906,11 +947,12 @@ function frame(now: number) {
       {
         left: keys.has('KeyA') || keys.has('ArrowLeft'),
         right: keys.has('KeyD') || keys.has('ArrowRight'),
-        boost: keys.has('KeyW') || keys.has('ArrowUp'),
+        boost: keys.has('KeyW') || keys.has('ArrowUp') || !!stick?.boost,
         drift: keys.has('ArrowDown'),
         // Ignored with the cursor right on the plane, where the heading to it would jitter.
         target:
-          mouse && Math.hypot(mx - plane.x, my - plane.y) > 20 ? Math.atan2(my - plane.y, mx - plane.x) : undefined,
+          stick?.a ??
+          (mouse && Math.hypot(mx - plane.x, my - plane.y) > 20 ? Math.atan2(my - plane.y, mx - plane.x) : undefined),
       },
       dt,
     )
