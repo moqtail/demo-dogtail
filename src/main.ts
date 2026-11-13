@@ -480,6 +480,7 @@ field('relay').addEventListener('input', showInvite)
 document.getElementById('teams')!.addEventListener('change', showInvite)
 showInvite()
 hud.textContent = ''
+document.documentElement.classList.add('ready') // the page shows once sized and filled in, so nothing shifts
 await new Promise<void>((resolve) =>
   joinForm.addEventListener('submit', (e) => {
     e.preventDefault()

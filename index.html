@@ -29,6 +29,9 @@
         -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
       }
+      html:not(.ready) body {
+        visibility: hidden; /* until main.ts has sized the canvas and filled in the join form */
+      }
       canvas {
         display: block;
         margin: auto;
