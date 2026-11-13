@@ -51,6 +51,7 @@ import {
   wrapDist,
   allies,
   smallerTeam,
+  sideAhead,
   teamScores,
   RoundKills,
   ROUND_MS,
@@ -109,6 +110,10 @@ describe('game rules', () => {
     expect(allies('', '')).toBe(false) // players without a team fight everyone
     expect(smallerTeam([])).toBe('dogs')
     expect(smallerTeam(['dogs', '', 'cats', 'dogs'])).toBe('cats')
+    expect(sideAhead(['dogs', '', 'cats', 'dogs'], 1)).toBe('dogs')
+    expect(sideAhead(['dogs', '', 'cats', 'dogs'], 2)).toBeUndefined()
+    expect(sideAhead(['cats', 'cats', 'cats', 'dogs'], 2)).toBe('cats')
+    expect(sideAhead([], 1)).toBeUndefined()
     const meta = (team: MetaMsg['team'], round: number, rk: number): MetaMsg => ({
       ...{ name: 'p', color: '', pilot: '', kills: 0, deaths: 0 },
       ...{ team, round, rk },

@@ -98,6 +98,11 @@ export function smallerTeam(teams: (Team | undefined)[]): 'dogs' | 'cats' {
   const count = (t: Team) => teams.filter((x) => x === t).length
   return count('cats') < count('dogs') ? 'cats' : 'dogs'
 }
+/** The side ahead by at least `by` players, if any: the one an ace leaves to even things out. */
+export function sideAhead(teams: (Team | undefined)[], by: number): 'dogs' | 'cats' | undefined {
+  const lead = teams.filter((x) => x === 'dogs').length - teams.filter((x) => x === 'cats').length
+  return lead >= by ? 'dogs' : -lead >= by ? 'cats' : undefined
+}
 
 /** Team rounds follow the shared clock, so every player agrees when one ends without a referee. */
 export const ROUND_MS = 180_000
