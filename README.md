@@ -2,7 +2,7 @@
 
 A multiplayer top-down plane shooter that runs entirely over a MOQtail relay. There is no game server.
 
-Play at **https://dogtail.moqtail.dev**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.moqtail.dev` by default, a cluster that connects each player to a nearby datacenter (the join screen's **Relay** field, or `?relay=` in the link, picks another; invite links carry it); nothing to install, and phones and tablets get on-screen buttons.
+Play at **https://dogtail.moqtail.dev**: pick a name, a color and a room, and send the invite link to friends. It runs over the public relay `relay.moqtail.dev` by default, a cluster that connects each player to a nearby datacenter (the join screen's **Advanced → MoQ relay address** field, or `?relay=` in the link, picks another; invite links carry it); nothing to install, and phones and tablets get on-screen buttons.
 
 Built with [MOQtail](https://github.com/moqtail/moqtail), a Media over QUIC (MoQ) library and relay.
 

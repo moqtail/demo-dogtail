@@ -633,18 +633,18 @@
         ><span data-i18n="room">Room</span> <input type="text" name="room" maxlength="32" autocapitalize="off"
       /></label>
       <details id="relay-box">
-        <summary data-i18n="relay">Relay</summary>
-        <input
-          type="text"
-          name="relay"
-          data-i18n-aria="relayUrl"
-          aria-label="Relay URL"
-          autocapitalize="off"
-          spellcheck="false"
-          pattern="(moqt|https)://.+"
-          data-i18n-title="relayHint"
-          title="A relay URL, such as moqt://relay.moqtail.dev"
-        />
+        <summary data-i18n="advanced">Advanced</summary>
+        <label
+          ><span data-i18n="relayUrl">MoQ relay address</span>
+          <input
+            type="text"
+            name="relay"
+            autocapitalize="off"
+            spellcheck="false"
+            pattern="(moqt|https)://.+"
+            data-i18n-title="relayHint"
+            title="A MoQ relay address, such as moqt://relay.moqtail.dev"
+        /></label>
       </details>
       <p id="notice"></p>
       <p id="invite"></p>
