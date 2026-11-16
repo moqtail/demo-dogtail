@@ -65,5 +65,14 @@
   "shotDownBy": "abgeschossen von {name} · zurück in {s}",
   "hudRoom": "Raum {room}",
   "hudPlayers": "Spieler {n}",
-  "feedback": "Feedback senden"
+  "feedback": "Feedback senden",
+  "voice": "Sprache",
+  "voiceOpen": "Offenes Mikro",
+  "voicePtt": "Push-to-Talk (V halten)",
+  "mic": "Mikrofon",
+  "micMute": "Stumm (V)",
+  "micUnmute": "Ton an (V)",
+  "micHold": "Zum Sprechen halten (V)",
+  "micDenied": "Mikrofon nicht erlaubt",
+  "mutePlayer": "Tippen, um die Stimme stumm oder laut zu schalten"
 }

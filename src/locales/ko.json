@@ -65,5 +65,14 @@
   "shotDownBy": "{name}에게 격추됨 · {s}초 후 복귀",
   "hudRoom": "방 {room}",
   "hudPlayers": "플레이어 {n}",
-  "feedback": "의견 보내기"
+  "feedback": "의견 보내기",
+  "voice": "음성",
+  "voiceOpen": "오픈 마이크",
+  "voicePtt": "눌러서 말하기 (V 길게 누르기)",
+  "mic": "마이크",
+  "micMute": "음소거 (V)",
+  "micUnmute": "음소거 해제 (V)",
+  "micHold": "누르고 있는 동안 말하기 (V)",
+  "micDenied": "마이크가 허용되지 않음",
+  "mutePlayer": "탭하여 이 플레이어의 음성을 음소거하거나 해제"
 }

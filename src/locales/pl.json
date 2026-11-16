@@ -65,5 +65,14 @@
   "shotDownBy": "zestrzelony przez {name} · powrót za {s}",
   "hudRoom": "pokój {room}",
   "hudPlayers": "graczy {n}",
-  "feedback": "Wyślij opinię"
+  "feedback": "Wyślij opinię",
+  "voice": "Głos",
+  "voiceOpen": "Otwarty mikrofon",
+  "voicePtt": "Naciśnij, aby mówić (przytrzymaj V)",
+  "mic": "Mikrofon",
+  "micMute": "Wycisz (V)",
+  "micUnmute": "Wyłącz wyciszenie (V)",
+  "micHold": "Przytrzymaj, aby mówić (V)",
+  "micDenied": "Mikrofon niedozwolony",
+  "mutePlayer": "Dotknij, aby wyciszyć lub przywrócić jego głos"
 }

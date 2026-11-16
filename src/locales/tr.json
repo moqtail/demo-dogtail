@@ -65,5 +65,14 @@
   "shotDownBy": "{name} seni düşürdü · {s} sn sonra yeniden doğuyorsun",
   "hudRoom": "oda {room}",
   "hudPlayers": "oyuncu {n}",
-  "feedback": "Geri bildirim gönder"
+  "feedback": "Geri bildirim gönder",
+  "voice": "Ses",
+  "voiceOpen": "Açık mikrofon",
+  "voicePtt": "Bas-konuş (V tuşunu basılı tut)",
+  "mic": "Mikrofon",
+  "micMute": "Sesi kapat (V)",
+  "micUnmute": "Sesi aç (V)",
+  "micHold": "Konuşmak için basılı tut (V)",
+  "micDenied": "Mikrofona izin verilmedi",
+  "mutePlayer": "Sesini kapatmak ya da açmak için dokun"
 }

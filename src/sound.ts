@@ -16,7 +16,8 @@
 
 /** Synthesized sound effects: no audio files to ship. */
 
-const audio = new AudioContext()
+/** Shared with voice chat (voice.ts), whose Opus runs at 48 kHz, so the page has one audio graph to unlock. */
+export const audio = new AudioContext({ sampleRate: 48000 })
 // Browsers start audio suspended until the user interacts with the page. iOS only allows it when a touch
 // ends, not when it starts, and suspends it again whenever the app goes to the background, so every
 // key, tap and touch end tries again until it is running.

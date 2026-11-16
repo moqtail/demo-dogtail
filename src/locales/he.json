@@ -65,5 +65,14 @@
   "shotDownBy": "הופלת על ידי {name} · חוזר בעוד {s}",
   "hudRoom": "חדר {room}",
   "hudPlayers": "שחקנים {n}",
-  "feedback": "שלח משוב"
+  "feedback": "שלח משוב",
+  "voice": "קול",
+  "voiceOpen": "מיקרופון פתוח",
+  "voicePtt": "לחץ כדי לדבר (החזק V)",
+  "mic": "מיקרופון",
+  "micMute": "השתק (V)",
+  "micUnmute": "בטל השתקה (V)",
+  "micHold": "החזק כדי לדבר (V)",
+  "micDenied": "המיקרופון לא מורשה",
+  "mutePlayer": "הקש כדי להשתיק או להשמיע את קולו"
 }

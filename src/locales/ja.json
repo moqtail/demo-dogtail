@@ -65,5 +65,14 @@
   "shotDownBy": "{name} に撃墜された · {s} 秒後に復帰",
   "hudRoom": "ルーム {room}",
   "hudPlayers": "プレイヤー {n}",
-  "feedback": "フィードバックを送る"
+  "feedback": "フィードバックを送る",
+  "voice": "ボイス",
+  "voiceOpen": "オープンマイク",
+  "voicePtt": "プッシュトゥトーク（V を押し続ける）",
+  "mic": "マイク",
+  "micMute": "ミュート (V)",
+  "micUnmute": "ミュート解除 (V)",
+  "micHold": "押している間話す (V)",
+  "micDenied": "マイクが許可されていません",
+  "mutePlayer": "タップしてこのプレイヤーの声をミュート／解除"
 }

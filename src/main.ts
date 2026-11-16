@@ -68,6 +68,7 @@ import type { Brain } from './brain'
 import { watchStats } from './netstats'
 import { play, setSound, soundOn, type SoundName } from './sound'
 import { currentLang, LANGS, setLang, t, type Lang } from './i18n'
+import { canHear, canTalk, Voice, type VoiceMode } from './voice'
 
 declare const __CERT_HASH__: string // injected by vite.config.ts
 
@@ -78,6 +79,38 @@ const langSelect = document.getElementById('lang') as HTMLSelectElement
 for (const [code, name] of Object.entries(LANGS)) langSelect.add(new Option(name, code))
 langSelect.value = currentLang()
 langSelect.addEventListener('change', () => (langSelect.blur(), void setLang(langSelect.value as Lang)))
+
+// Voice chat with teammates (voice.ts). Settings → Voice: an open mic (the default, with a mute button),
+// push-to-talk (hold V or the mic button) or off. Free-for-all rooms have none. Declared here, as the
+// keys below reach it from the start; `voice` exists once connected.
+const voiceSelect = document.getElementById('voice-mode') as HTMLSelectElement
+const micButton = document.getElementById('mic') as HTMLButtonElement
+const talkersLine = document.getElementById('talkers')!
+let voice: Voice | undefined
+let talking = new Set<string>()
+try {
+  voiceSelect.value = localStorage.getItem('dogtail.voice') ?? 'open'
+} catch {
+  // Storage blocked: the default.
+}
+if (!voiceSelect.value) voiceSelect.value = 'open'
+voiceSelect.addEventListener('change', () => {
+  voiceSelect.blur()
+  try {
+    localStorage.setItem('dogtail.voice', voiceSelect.value)
+  } catch {
+    // Storage blocked: lasts until reload.
+  }
+})
+/** V or the mic button: on an open mic a press mutes or unmutes; push-to-talk talks while held. */
+function micPress(down: boolean) {
+  if (!voice || voice.mode === 'off') return
+  if (voice.mode === 'ptt') voice.held = down
+  else if (down) voice.muted = !voice.muted
+}
+micButton.addEventListener('pointerdown', (e) => (e.preventDefault(), micPress(true)))
+for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const)
+  micButton.addEventListener(ev, () => (micButton.blur(), micPress(false)))
 
 const params = new URLSearchParams(location.search)
 // With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
@@ -103,13 +136,17 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && !e.repeat) minimap.flip()
   if (e.code === 'KeyE' && !e.repeat) showReactions.flip()
   if (e.code === 'KeyT' && !e.repeat) switchTeam()
+  if (e.code === 'KeyV' && !e.repeat) micPress(true)
   if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomBy(1.1)
   if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomBy(1 / 1.1)
   if (e.code === 'Digit0' && !e.repeat) zoomBy(0)
   const r = /^Digit([1-4])$/.exec(e.code)
   if (r && !e.repeat) react(REACTIONS[Number(r[1]) - 1]!)
 })
-addEventListener('keyup', (e) => keys.delete(e.code))
+addEventListener('keyup', (e) => {
+  keys.delete(e.code)
+  if (e.code === 'KeyV') micPress(false)
+})
 
 // Mouse: the plane steers toward the cursor (arena coordinates).
 /** Cursor as a fraction of the canvas; turned into arena coordinates each frame, as the camera moves. */
@@ -135,7 +172,7 @@ addEventListener('pointerdown', (e) => {
 addEventListener('pointerup', (e) => {
   if (e.pointerType === 'mouse' && e.button === 0) mouseFiring = false
 })
-addEventListener('blur', () => (mouseFiring = false))
+addEventListener('blur', () => ((mouseFiring = false), micPress(false))) // a key-up we'll never get
 
 // Fullscreen: the ⛶ button or F. Safari on iPhone has no fullscreen for pages, so the button hides
 // there; adding the game to the Home Screen opens it without browser bars instead (manifest.webmanifest).
@@ -667,6 +704,7 @@ const tellAll = (id: string, out: Senders): Senders => ({
   sendMeta: (m) => (out.sendMeta(m), receive(id, { t: 'meta', m })),
 })
 const net = { ...tellAll(me, conn), joinRtt: conn.joinRtt }
+voice = canHear ? new Voice(conn.client, room, me) : undefined
 
 stats?.setRtt(net.joinRtt)
 
@@ -795,16 +833,44 @@ if (myPic) {
   setInterval(sendPic, 3000)
 }
 
+const voiceOn = () => !!voice && voice.mode !== 'off' && !!myTeam
+/** Keeps voice on our side's channel, and shows the mic button and who is talking. */
+function showVoice() {
+  if (!voice) return
+  voice.mode = voiceSelect.value as VoiceMode
+  voice.setTeam(teamMode() ? myTeam : '')
+  talking = voice.talking()
+  const on = voiceOn() && teamMode()
+  micButton.hidden = !on || !canTalk
+  micButton.textContent = voice.micDenied ? '🚫' : voice.mode === 'open' && voice.muted ? '🔇' : '🎙️'
+  micButton.setAttribute('aria-pressed', String(voice.mode === 'ptt' ? voice.held : !voice.muted))
+  micButton.title = t(
+    voice.micDenied ? 'micDenied' : voice.mode === 'ptt' ? 'micHold' : voice.muted ? 'micUnmute' : 'micMute',
+  )
+  const names = [...talking].filter((id) => id !== me).map((id) => metas.get(id)?.name ?? id)
+  talkersLine.hidden = !on || names.length === 0
+  talkersLine.textContent = `🎙️ ${names.join(', ')}`
+}
+
 // Scoreboard, best first. 4 Hz is plenty for text and keeps DOM work out of the frame loop.
 // On a phone it starts short (top 3 and you), as it covers the game; a tap opens the top 10 and back.
 const scores = document.getElementById('scores')!
 let boardOpen = !matchMedia('(pointer: coarse)').matches
 scores.classList.toggle('short', !boardOpen)
-scores.addEventListener('click', () => (boardOpen = !boardOpen))
+scores.addEventListener('click', (e) => {
+  const id = (e.target as Element).closest<HTMLElement>('li[data-mute]')?.dataset.mute
+  // A teammate's row on an open board turns their voice off or on here; on a phone, other taps fold
+  // or unfold the board, so the tap that opens it can't mute anyone.
+  if (id && voice && boardOpen) {
+    if (!voice.mutedPlayers.delete(id)) voice.mutedPlayers.add(id)
+  } else if (scores.matches('.short')) boardOpen = !boardOpen
+})
 setInterval(() => {
+  showVoice()
   const all = [
-    { name: t('youSuffix', { name: myName }), color: myColor, kills, deaths, team: myTeam, you: true },
+    { id: me, name: t('youSuffix', { name: myName }), color: myColor, kills, deaths, team: myTeam, you: true },
     ...[...peers.keys()].map((id) => ({
+      id,
       ...(metas.get(id) ?? { name: id, color: '#9ca3af', pilot: '', kills: 0, deaths: 0 }),
       you: false,
     })),
@@ -823,7 +889,12 @@ setInterval(() => {
     ...shown.map((r) => {
       const li = document.createElement('li')
       const icon = r.team ? TEAMS[r.team].icon + ' ' : ''
-      const name = Object.assign(document.createElement('span'), { textContent: `${r.rank}. ${icon}${r.name}` })
+      const mic = talking.has(r.id) ? '🎙️ ' : voice?.mutedPlayers.has(r.id) ? '🔇 ' : ''
+      if (voiceOn() && !r.you && !isAce(r.id) && allies(myTeam, r.team)) {
+        li.dataset.mute = r.id
+        li.title = t('mutePlayer')
+      }
+      const name = Object.assign(document.createElement('span'), { textContent: `${r.rank}. ${icon}${mic}${r.name}` })
       name.style.color = r.color
       li.append(name, Object.assign(document.createElement('span'), { textContent: `${r.kills} / ${r.deaths}` }))
       return li
@@ -1031,6 +1102,7 @@ function frame(now: number) {
   drawFrame(ctx, {
     view,
     dpr,
+    talking,
     cam,
     bullets,
     drops,

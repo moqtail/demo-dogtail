@@ -65,5 +65,14 @@
   "shotDownBy": "abbattuto da {name} · rientri tra {s}",
   "hudRoom": "stanza {room}",
   "hudPlayers": "giocatori {n}",
-  "feedback": "Invia un feedback"
+  "feedback": "Invia un feedback",
+  "voice": "Voce",
+  "voiceOpen": "Microfono aperto",
+  "voicePtt": "Premi per parlare (tieni premuto V)",
+  "mic": "Microfono",
+  "micMute": "Disattiva audio (V)",
+  "micUnmute": "Riattiva audio (V)",
+  "micHold": "Tieni premuto per parlare (V)",
+  "micDenied": "Microfono non consentito",
+  "mutePlayer": "Tocca per disattivare o riattivare la sua voce"
 }
