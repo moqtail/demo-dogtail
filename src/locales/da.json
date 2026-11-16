@@ -64,5 +64,6 @@
   "switchHint": "skift side når du er skudt ned",
   "shotDownBy": "skudt ned af {name} · tilbage om {s}",
   "hudRoom": "rum {room}",
-  "hudPlayers": "spillere {n}"
+  "hudPlayers": "spillere {n}",
+  "feedback": "Send feedback"
 }

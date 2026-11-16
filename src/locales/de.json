@@ -64,5 +64,6 @@
   "switchHint": "Seite wechseln, wenn abgeschossen",
   "shotDownBy": "abgeschossen von {name} · zurück in {s}",
   "hudRoom": "Raum {room}",
-  "hudPlayers": "Spieler {n}"
+  "hudPlayers": "Spieler {n}",
+  "feedback": "Feedback senden"
 }

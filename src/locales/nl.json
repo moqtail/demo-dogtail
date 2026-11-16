@@ -64,5 +64,6 @@
   "switchHint": "wissel van kant als je neergehaald bent",
   "shotDownBy": "neergehaald door {name} · terug over {s}",
   "hudRoom": "kamer {room}",
-  "hudPlayers": "spelers {n}"
+  "hudPlayers": "spelers {n}",
+  "feedback": "Feedback sturen"
 }

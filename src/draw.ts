@@ -164,6 +164,7 @@ function drawPlane(
     ctx.stroke()
   }
   ctx.fillStyle = '#e5e7eb'
+  ctx.textAlign = 'left' // not the default 'start', which a right-to-left page turns around
   ctx.fillText(`${team ? TEAMS[team].icon + ' ' : ''}${label} ${'♥'.repeat(p.hp)}`, -20, -26)
   ctx.rotate(p.a)
   ctx.fillStyle = color

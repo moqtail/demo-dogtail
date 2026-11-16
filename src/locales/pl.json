@@ -64,5 +64,6 @@
   "switchHint": "zmień stronę po zestrzeleniu",
   "shotDownBy": "zestrzelony przez {name} · powrót za {s}",
   "hudRoom": "pokój {room}",
-  "hudPlayers": "graczy {n}"
+  "hudPlayers": "graczy {n}",
+  "feedback": "Wyślij opinię"
 }

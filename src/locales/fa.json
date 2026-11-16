@@ -64,5 +64,6 @@
   "switchHint": "وقتی سرنگون شدید تیم را عوض کنید",
   "shotDownBy": "سرنگون‌شده توسط {name} · بازگشت تا {s}",
   "hudRoom": "اتاق {room}",
-  "hudPlayers": "بازیکنان {n}"
+  "hudPlayers": "بازیکنان {n}",
+  "feedback": "ارسال بازخورد"
 }

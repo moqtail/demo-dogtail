@@ -64,5 +64,6 @@
   "switchHint": "stranu změníš po sestřelení",
   "shotDownBy": "sestřelil tě {name} · návrat za {s}",
   "hudRoom": "místnost {room}",
-  "hudPlayers": "hráčů {n}"
+  "hudPlayers": "hráčů {n}",
+  "feedback": "Poslat zpětnou vazbu"
 }

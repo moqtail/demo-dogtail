@@ -64,5 +64,6 @@
   "switchHint": "düşürülünce taraf değiştirebilirsin",
   "shotDownBy": "{name} seni düşürdü · {s} sn sonra yeniden doğuyorsun",
   "hudRoom": "oda {room}",
-  "hudPlayers": "oyuncu {n}"
+  "hudPlayers": "oyuncu {n}",
+  "feedback": "Geri bildirim gönder"
 }

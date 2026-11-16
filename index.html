@@ -141,6 +141,7 @@
       #fullscreen,
       #map,
       #react-toggle,
+      #feedback,
       #leave {
         font: inherit;
         color: inherit;
@@ -149,6 +150,9 @@
         border: 1px solid #374151;
         border-radius: 6px;
         padding: 4px 10px;
+      }
+      #feedback {
+        text-decoration: none;
       }
       #fullscreen[hidden],
       #map[hidden],
@@ -526,7 +530,7 @@
     </style>
   </head>
   <body>
-    <div id="hud" data-i18n="connecting">Connecting…</div>
+    <div id="hud"></div>
     <ol id="feed" aria-live="polite" data-i18n-aria="killFeed" aria-label="Kill feed"></ol>
     <div id="reactions" hidden data-i18n-aria="reactions" aria-label="Reactions"></div>
     <div id="tools">
@@ -550,6 +554,17 @@
       >
         🗺
       </button>
+      <a
+        id="feedback"
+        href="https://docs.google.com/forms/d/e/1FAIpQLSfJfhIdlVMdyu4vVRfRx72jpdy06Um8c3Z0LZUWzCu_6p4eCg/viewform"
+        target="_blank"
+        rel="noopener"
+        data-i18n-title="feedback"
+        title="Send feedback"
+        data-i18n-aria="feedback"
+        aria-label="Send feedback"
+        >💬</a
+      >
       <button
         id="fullscreen"
         data-i18n-title="fullscreenKey"

@@ -64,5 +64,6 @@
   "switchHint": "بدّل الفريق بعد إسقاطك",
   "shotDownBy": "أسقطك {name} · العودة بعد {s}",
   "hudRoom": "الغرفة {room}",
-  "hudPlayers": "اللاعبون {n}"
+  "hudPlayers": "اللاعبون {n}",
+  "feedback": "أرسل ملاحظاتك"
 }

@@ -64,5 +64,6 @@
   "switchHint": "गिराए जाने पर पक्ष बदलें",
   "shotDownBy": "{name} ने गिराया · {s} में वापसी",
   "hudRoom": "कमरा {room}",
-  "hudPlayers": "खिलाड़ी {n}"
+  "hudPlayers": "खिलाड़ी {n}",
+  "feedback": "प्रतिक्रिया भेजें"
 }

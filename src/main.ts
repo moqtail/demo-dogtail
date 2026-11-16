@@ -531,6 +531,7 @@ const fullRoom = params.get('full')
 if (fullRoom) document.getElementById('notice')!.textContent = t('roomFull', { room: fullRoom, n: ROOM_CAP })
 field('room').addEventListener('input', showInvite)
 field('relay').addEventListener('input', showInvite)
+addEventListener('langchange', showInvite)
 document.getElementById('teams')!.addEventListener('change', showInvite)
 showInvite()
 hud.textContent = ''

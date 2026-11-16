@@ -64,5 +64,6 @@
   "switchHint": "ganti pihak saat ditembak jatuh",
   "shotDownBy": "ditembak jatuh oleh {name} · kembali dalam {s}",
   "hudRoom": "ruang {room}",
-  "hudPlayers": "pemain {n}"
+  "hudPlayers": "pemain {n}",
+  "feedback": "Kirim masukan"
 }

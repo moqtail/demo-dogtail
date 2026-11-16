@@ -64,5 +64,6 @@
   "switchHint": "troque de lado quando for abatido",
   "shotDownBy": "abatido por {name} · voltando em {s}",
   "hudRoom": "sala {room}",
-  "hudPlayers": "jogadores {n}"
+  "hudPlayers": "jogadores {n}",
+  "feedback": "Enviar feedback"
 }

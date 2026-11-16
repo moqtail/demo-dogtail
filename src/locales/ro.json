@@ -64,5 +64,6 @@
   "switchHint": "schimbă tabăra când ești doborât",
   "shotDownBy": "doborât de {name} · revii în {s}",
   "hudRoom": "camera {room}",
-  "hudPlayers": "jucători {n}"
+  "hudPlayers": "jucători {n}",
+  "feedback": "Trimite feedback"
 }

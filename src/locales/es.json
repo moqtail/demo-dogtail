@@ -64,5 +64,6 @@
   "switchHint": "cambia de bando cuando te derriben",
   "shotDownBy": "derribado por {name} · reapareces en {s}",
   "hudRoom": "sala {room}",
-  "hudPlayers": "jugadores {n}"
+  "hudPlayers": "jugadores {n}",
+  "feedback": "Enviar comentarios"
 }

@@ -64,5 +64,6 @@
   "switchHint": "החלף צד כשתופל",
   "shotDownBy": "הופלת על ידי {name} · חוזר בעוד {s}",
   "hudRoom": "חדר {room}",
-  "hudPlayers": "שחקנים {n}"
+  "hudPlayers": "שחקנים {n}",
+  "feedback": "שלח משוב"
 }

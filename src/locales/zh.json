@@ -64,5 +64,6 @@
   "switchHint": "被击落后可以换边",
   "shotDownBy": "被 {name} 击落 · {s} 秒后复活",
   "hudRoom": "房间 {room}",
-  "hudPlayers": "玩家 {n}"
+  "hudPlayers": "玩家 {n}",
+  "feedback": "发送反馈"
 }

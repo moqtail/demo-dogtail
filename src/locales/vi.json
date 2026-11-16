@@ -64,5 +64,6 @@
   "switchHint": "đổi phe khi bị bắn hạ",
   "shotDownBy": "bị {name} bắn hạ · hồi sinh sau {s}",
   "hudRoom": "phòng {room}",
-  "hudPlayers": "người chơi {n}"
+  "hudPlayers": "người chơi {n}",
+  "feedback": "Gửi góp ý"
 }

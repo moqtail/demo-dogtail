@@ -64,5 +64,6 @@
   "switchHint": "cambia squadra quando vieni abbattuto",
   "shotDownBy": "abbattuto da {name} · rientri tra {s}",
   "hudRoom": "stanza {room}",
-  "hudPlayers": "giocatori {n}"
+  "hudPlayers": "giocatori {n}",
+  "feedback": "Invia un feedback"
 }

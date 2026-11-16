@@ -64,5 +64,6 @@
   "switchHint": "άλλαξε πλευρά όταν σε καταρρίψουν",
   "shotDownBy": "σε κατέρριψε ο {name} · επιστροφή σε {s}",
   "hudRoom": "δωμάτιο {room}",
-  "hudPlayers": "παίκτες {n}"
+  "hudPlayers": "παίκτες {n}",
+  "feedback": "Στείλε σχόλια"
 }

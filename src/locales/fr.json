@@ -64,5 +64,6 @@
   "switchHint": "change de camp une fois abattu",
   "shotDownBy": "abattu par {name} · retour dans {s}",
   "hudRoom": "salle {room}",
-  "hudPlayers": "joueurs {n}"
+  "hudPlayers": "joueurs {n}",
+  "feedback": "Envoyer un avis"
 }

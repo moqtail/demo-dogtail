@@ -64,5 +64,6 @@
   "switchHint": "เปลี่ยนฝั่งได้เมื่อถูกยิงตก",
   "shotDownBy": "ถูก {name} ยิงตก · กลับมาใน {s}",
   "hudRoom": "ห้อง {room}",
-  "hudPlayers": "ผู้เล่น {n}"
+  "hudPlayers": "ผู้เล่น {n}",
+  "feedback": "ส่งความคิดเห็น"
 }

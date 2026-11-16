@@ -88,6 +88,7 @@ export const en = {
   shotDownBy: 'shot down by {name} · respawning in {s}',
   hudRoom: 'room {room}',
   hudPlayers: 'players {n}',
+  feedback: 'Send feedback',
 }
 export type Key = keyof typeof en
 
@@ -159,6 +160,7 @@ export async function setLang(to?: Lang) {
   document.documentElement.lang = lang
   document.documentElement.dir = RTL.includes(lang) ? 'rtl' : 'ltr'
   translatePage()
+  dispatchEvent(new Event('langchange')) // for text the page builds itself
 }
 
 /** Fills elements marked data-i18n (text), data-i18n-title and data-i18n-aria (aria-label). */

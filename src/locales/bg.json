@@ -64,5 +64,6 @@
   "switchHint": "смени страната, когато си свален",
   "shotDownBy": "свален от {name} · връщане след {s}",
   "hudRoom": "стая {room}",
-  "hudPlayers": "играчи {n}"
+  "hudPlayers": "играчи {n}",
+  "feedback": "Изпрати отзив"
 }

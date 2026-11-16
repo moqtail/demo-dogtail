@@ -64,5 +64,6 @@
   "switchHint": "byt sida när du är nedskjuten",
   "shotDownBy": "nedskjuten av {name} · tillbaka om {s}",
   "hudRoom": "rum {room}",
-  "hudPlayers": "spelare {n}"
+  "hudPlayers": "spelare {n}",
+  "feedback": "Skicka feedback"
 }

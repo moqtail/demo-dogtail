@@ -64,5 +64,6 @@
   "switchHint": "撃墜されたら陣営を変更できます",
   "shotDownBy": "{name} に撃墜された · {s} 秒後に復帰",
   "hudRoom": "ルーム {room}",
-  "hudPlayers": "プレイヤー {n}"
+  "hudPlayers": "プレイヤー {n}",
+  "feedback": "フィードバックを送る"
 }
