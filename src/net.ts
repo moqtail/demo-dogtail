@@ -42,7 +42,7 @@ export type NetCallbacks = {
  * (WebKit bug 319818), which would cut an iPad off from everyone within seconds. Datagrams can be lost;
  * pos and meta repeat anyway, and main.ts repeats kills.
  */
-async function openTrack(client: MOQtailClient, ns: Tuple, name: string, priority: number) {
+export async function openTrack(client: MOQtailClient, ns: Tuple, name: string, priority: number) {
   const ftn = FullTrackName.tryNew(ns, name)
   const stream = new ReadableStream<MoqtObject>() // only backs the PUBLISH; objects go as datagrams
   client.addOrUpdateTrack({
@@ -127,6 +127,7 @@ export async function connect(
 
   return {
     joinRtt,
+    client,
     ...senders(sendObj),
     /**
      * Another player on this connection, such as an ace hosted in this tab: its own namespace and

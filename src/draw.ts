@@ -44,6 +44,8 @@ export type Scene = {
   view: View
   /** Canvas pixels per CSS pixel: sharp on Retina screens. */
   dpr: number
+  /** Players talking on voice chat, marked 🎙️ by their name. */
+  talking: Set<string>
   /** Arena point at the centre of the view. */
   cam: { x: number; y: number }
   bullets: Bullet[]
@@ -102,12 +104,21 @@ function drawScene(ctx: CanvasRenderingContext2D, sc: Scene) {
   ctx.font = '12px system-ui'
   for (const [id, peer] of sc.peers) {
     const m = sc.metas.get(id)
-    const label = `${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
+    const label = `${sc.talking.has(id) ? '🎙️ ' : ''}${m?.name ?? id}${peer.shown.away ? ' (away)' : ''}`
     if (peer.shown.hp > 0)
       drawPlane(ctx, sc, peer.shown, m?.color ?? GREY, label, sc.pics?.get(id) ?? m?.pilot ?? '', id, m?.team)
   }
   if (sc.me.alive) {
-    drawPlane(ctx, sc, sc.me.plane, sc.me.color, t('you'), sc.me.pic ?? sc.me.pilot, sc.me.id, sc.me.team)
+    drawPlane(
+      ctx,
+      sc,
+      sc.me.plane,
+      sc.me.color,
+      `${sc.talking.has(sc.me.id) ? '🎙️ ' : ''}${t('you')}`,
+      sc.me.pic ?? sc.me.pilot,
+      sc.me.id,
+      sc.me.team,
+    )
     drawPulse(ctx, sc)
   }
   for (const b of sc.booms) drawBoom(ctx, b)

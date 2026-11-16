@@ -140,6 +140,7 @@
       #fullscreen,
       #map,
       #react-toggle,
+      #mic,
       #feedback,
       #leave {
         font: inherit;
@@ -153,6 +154,10 @@
       #feedback {
         text-decoration: none;
       }
+      #mic {
+        touch-action: none; /* held for push-to-talk */
+      }
+      #mic[hidden],
       #fullscreen[hidden],
       #map[hidden],
       #leave[hidden] {
@@ -337,6 +342,27 @@
         font-weight: normal;
         color: #9ca3af;
         font-variant-numeric: tabular-nums;
+      }
+      #talkers {
+        position: fixed;
+        top: calc(44px + var(--st));
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        width: fit-content;
+        padding: 2px 10px;
+        border-radius: 10px;
+        background: #111827cc;
+        font-size: 13px;
+        pointer-events: none;
+      }
+      #talkers[hidden] {
+        display: none;
+      }
+      @media (max-width: 1100px) {
+        #talkers {
+          top: calc(80px + var(--st));
+        }
       }
       #banner {
         position: fixed;
@@ -562,6 +588,7 @@
       >
         🗺
       </button>
+      <button id="mic" hidden data-i18n-aria="mic" aria-label="Microphone">🎙️</button>
       <a
         id="feedback"
         href="https://docs.google.com/forms/d/e/1FAIpQLSfJfhIdlVMdyu4vVRfRx72jpdy06Um8c3Z0LZUWzCu_6p4eCg/viewform"
@@ -614,6 +641,14 @@
           >
         </fieldset>
         <fieldset>
+          <legend data-i18n="voice">Voice</legend>
+          <select id="voice-mode" aria-label="Voice">
+            <option value="open" data-i18n="voiceOpen">Open mic</option>
+            <option value="ptt" data-i18n="voicePtt">Push to talk (hold V)</option>
+            <option value="off" data-i18n="off">Off</option>
+          </select>
+        </fieldset>
+        <fieldset>
           <legend data-i18n="language">Language</legend>
           <select id="lang" aria-label="Language"></select>
         </fieldset>
@@ -626,6 +661,7 @@
       <span class="red"></span><span class="bar"></span><span class="blue"></span><span class="time"></span>
     </button>
     <p id="banner" hidden></p>
+    <p id="talkers" hidden aria-live="polite"></p>
     <form id="join">
       <h1>DOGtail</h1>
       <label

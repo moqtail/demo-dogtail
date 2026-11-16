@@ -65,5 +65,14 @@
   "shotDownBy": "bị {name} bắn hạ · hồi sinh sau {s}",
   "hudRoom": "phòng {room}",
   "hudPlayers": "người chơi {n}",
-  "feedback": "Gửi góp ý"
+  "feedback": "Gửi góp ý",
+  "voice": "Giọng nói",
+  "voiceOpen": "Mic luôn bật",
+  "voicePtt": "Nhấn để nói (giữ V)",
+  "mic": "Micrô",
+  "micMute": "Tắt tiếng (V)",
+  "micUnmute": "Bật tiếng (V)",
+  "micHold": "Giữ để nói (V)",
+  "micDenied": "Micrô không được cho phép",
+  "mutePlayer": "Chạm để tắt hoặc bật tiếng người này"
 }

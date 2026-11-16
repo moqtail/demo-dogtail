@@ -65,5 +65,14 @@
   "shotDownBy": "被 {name} 击落 · {s} 秒后复活",
   "hudRoom": "房间 {room}",
   "hudPlayers": "玩家 {n}",
-  "feedback": "发送反馈"
+  "feedback": "发送反馈",
+  "voice": "语音",
+  "voiceOpen": "开放麦克风",
+  "voicePtt": "按键通话（按住 V）",
+  "mic": "麦克风",
+  "micMute": "静音 (V)",
+  "micUnmute": "取消静音 (V)",
+  "micHold": "按住说话 (V)",
+  "micDenied": "未允许使用麦克风",
+  "mutePlayer": "点按以静音或取消静音此玩家"
 }

@@ -52,6 +52,8 @@ import {
   allies,
   smallerTeam,
   sideAhead,
+  rms,
+  VoiceGate,
   teamScores,
   RoundKills,
   ROUND_MS,
@@ -285,5 +287,14 @@ describe('game rules', () => {
     expect(cleanEvent({ t: 'pic', d: d.slice(1) })).toBeUndefined() // wrong size
     expect(cleanEvent({ t: 'pic', d: '<' + d.slice(1) })).toBeUndefined() // not base64
     expect(cleanEvent({ t: 'pic', d: 'data:image/jpeg;base64,AAAA' })).toBeUndefined()
+  })
+
+  it('hears a voice on loud frames, and holds through the gaps between words', () => {
+    expect(rms(new Float32Array([0.5, -0.5, 0.5, -0.5]))).toBeCloseTo(0.5)
+    const gate = new VoiceGate(0.015, 400)
+    expect(gate.push(0.001, 0)).toBe(false) // room noise
+    expect(gate.push(0.1, 100)).toBe(true) // speech
+    expect(gate.push(0.001, 300)).toBe(true) // a pause between words
+    expect(gate.push(0.001, 600)).toBe(false) // stopped talking
   })
 })

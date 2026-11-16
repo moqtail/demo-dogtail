@@ -65,5 +65,14 @@
   "shotDownBy": "neergehaald door {name} · terug over {s}",
   "hudRoom": "kamer {room}",
   "hudPlayers": "spelers {n}",
-  "feedback": "Feedback sturen"
+  "feedback": "Feedback sturen",
+  "voice": "Spraak",
+  "voiceOpen": "Open microfoon",
+  "voicePtt": "Drukken om te praten (houd V ingedrukt)",
+  "mic": "Microfoon",
+  "micMute": "Dempen (V)",
+  "micUnmute": "Dempen opheffen (V)",
+  "micHold": "Ingedrukt houden om te praten (V)",
+  "micDenied": "Microfoon niet toegestaan",
+  "mutePlayer": "Tik om hun stem te dempen of weer aan te zetten"
 }

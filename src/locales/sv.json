@@ -65,5 +65,14 @@
   "shotDownBy": "nedskjuten av {name} · tillbaka om {s}",
   "hudRoom": "rum {room}",
   "hudPlayers": "spelare {n}",
-  "feedback": "Skicka feedback"
+  "feedback": "Skicka feedback",
+  "voice": "Röst",
+  "voiceOpen": "Öppen mikrofon",
+  "voicePtt": "Tryck för att prata (håll V)",
+  "mic": "Mikrofon",
+  "micMute": "Stäng av ljud (V)",
+  "micUnmute": "Slå på ljud (V)",
+  "micHold": "Håll för att prata (V)",
+  "micDenied": "Mikrofonen är inte tillåten",
+  "mutePlayer": "Tryck för att stänga av eller slå på deras röst"
 }

@@ -65,5 +65,14 @@
   "shotDownBy": "sestřelil tě {name} · návrat za {s}",
   "hudRoom": "místnost {room}",
   "hudPlayers": "hráčů {n}",
-  "feedback": "Poslat zpětnou vazbu"
+  "feedback": "Poslat zpětnou vazbu",
+  "voice": "Hlas",
+  "voiceOpen": "Otevřený mikrofon",
+  "voicePtt": "Mluv při stisku (drž V)",
+  "mic": "Mikrofon",
+  "micMute": "Ztlumit (V)",
+  "micUnmute": "Zrušit ztlumení (V)",
+  "micHold": "Drž pro mluvení (V)",
+  "micDenied": "Mikrofon není povolen",
+  "mutePlayer": "Klepni pro ztlumení nebo zapnutí jeho hlasu"
 }

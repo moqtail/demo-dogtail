@@ -427,3 +427,22 @@ export type WireMsg = { t: 'pos'; p: PosMsg } | { t: 'meta'; m: MetaMsg } | Even
 
 export const encode = (m: WireMsg): Uint8Array => enc.encode(JSON.stringify(m))
 export const decode = <T>(b: Uint8Array): T => JSON.parse(dec.decode(b)) as T
+
+/**
+ * Whether an open mic is hearing a voice: loud enough frames switch it on, and it stays on for `hold`
+ * ms after the last one, so the gaps between words aren't cut.
+ */
+export class VoiceGate {
+  #until = -Infinity
+  constructor(
+    readonly threshold = 0.015,
+    readonly hold = 400,
+  ) {}
+  /** `rms` of one frame at time `now` (ms): is it speech? */
+  push(rms: number, now: number) {
+    if (rms >= this.threshold) this.#until = now + this.hold
+    return now < this.#until
+  }
+}
+
+export const rms = (s: Float32Array) => Math.sqrt(s.reduce((a, v) => a + v * v, 0) / s.length)

@@ -89,6 +89,15 @@ export const en = {
   hudRoom: 'room {room}',
   hudPlayers: 'players {n}',
   feedback: 'Send feedback',
+  voice: 'Voice',
+  voiceOpen: 'Open mic',
+  voicePtt: 'Push to talk (hold V)',
+  mic: 'Microphone',
+  micMute: 'Mute (V)',
+  micUnmute: 'Unmute (V)',
+  micHold: 'Hold to talk (V)',
+  micDenied: 'Microphone not allowed',
+  mutePlayer: 'Tap to mute or unmute their voice',
 }
 export type Key = keyof typeof en
 

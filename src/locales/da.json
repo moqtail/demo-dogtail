@@ -65,5 +65,14 @@
   "shotDownBy": "skudt ned af {name} · tilbage om {s}",
   "hudRoom": "rum {room}",
   "hudPlayers": "spillere {n}",
-  "feedback": "Send feedback"
+  "feedback": "Send feedback",
+  "voice": "Stemme",
+  "voiceOpen": "Åben mikrofon",
+  "voicePtt": "Tryk for at tale (hold V)",
+  "mic": "Mikrofon",
+  "micMute": "Slå lyd fra (V)",
+  "micUnmute": "Slå lyd til (V)",
+  "micHold": "Hold for at tale (V)",
+  "micDenied": "Mikrofonen er ikke tilladt",
+  "mutePlayer": "Tryk for at slå deres stemme fra eller til"
 }

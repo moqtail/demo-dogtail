@@ -65,5 +65,14 @@
   "shotDownBy": "doborât de {name} · revii în {s}",
   "hudRoom": "camera {room}",
   "hudPlayers": "jucători {n}",
-  "feedback": "Trimite feedback"
+  "feedback": "Trimite feedback",
+  "voice": "Voce",
+  "voiceOpen": "Microfon deschis",
+  "voicePtt": "Apasă pentru a vorbi (ține V)",
+  "mic": "Microfon",
+  "micMute": "Dezactivează sunetul (V)",
+  "micUnmute": "Activează sunetul (V)",
+  "micHold": "Ține apăsat pentru a vorbi (V)",
+  "micDenied": "Microfonul nu este permis",
+  "mutePlayer": "Atinge pentru a-i opri sau porni vocea"
 }

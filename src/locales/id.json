@@ -65,5 +65,14 @@
   "shotDownBy": "ditembak jatuh oleh {name} · kembali dalam {s}",
   "hudRoom": "ruang {room}",
   "hudPlayers": "pemain {n}",
-  "feedback": "Kirim masukan"
+  "feedback": "Kirim masukan",
+  "voice": "Suara",
+  "voiceOpen": "Mik terbuka",
+  "voicePtt": "Tekan untuk bicara (tahan V)",
+  "mic": "Mikrofon",
+  "micMute": "Bisukan (V)",
+  "micUnmute": "Bunyikan (V)",
+  "micHold": "Tahan untuk bicara (V)",
+  "micDenied": "Mikrofon tidak diizinkan",
+  "mutePlayer": "Ketuk untuk membisukan atau membunyikan suaranya"
 }

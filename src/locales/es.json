@@ -65,5 +65,14 @@
   "shotDownBy": "derribado por {name} · reapareces en {s}",
   "hudRoom": "sala {room}",
   "hudPlayers": "jugadores {n}",
-  "feedback": "Enviar comentarios"
+  "feedback": "Enviar comentarios",
+  "voice": "Voz",
+  "voiceOpen": "Micrófono abierto",
+  "voicePtt": "Pulsar para hablar (mantén V)",
+  "mic": "Micrófono",
+  "micMute": "Silenciar (V)",
+  "micUnmute": "Activar sonido (V)",
+  "micHold": "Mantén pulsado para hablar (V)",
+  "micDenied": "Micrófono no permitido",
+  "mutePlayer": "Toca para silenciar o activar su voz"
 }
