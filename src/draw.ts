@@ -16,6 +16,7 @@
 
 /** Drawing the game on the canvas: reads the state it is given, changes nothing. */
 
+import { t } from './i18n'
 import {
   allies,
   edgePoint,
@@ -41,6 +42,8 @@ export const REACT_SHOW = 2000 // ms a reaction stays over its plane
 /** What one frame shows; main.ts builds it from the game state. */
 export type Scene = {
   view: View
+  /** Canvas pixels per CSS pixel: sharp on Retina screens. */
+  dpr: number
   /** Arena point at the centre of the view. */
   cam: { x: number; y: number }
   bullets: Bullet[]
@@ -71,8 +74,9 @@ const mapColor = (m: MetaMsg | undefined) => (m?.team ? TEAMS[m.team].color : (m
 
 export function drawFrame(ctx: CanvasRenderingContext2D, sc: Scene) {
   const { view, cam } = sc
+  const s = view.s * sc.dpr
   // The arena wraps, so the scene is drawn 3×3 times around the camera; the canvas shows what's in view.
-  ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2 - cam.x) * view.s, (view.h / 2 - cam.y) * view.s)
+  ctx.setTransform(s, 0, 0, s, (view.w / 2 - cam.x) * s, (view.h / 2 - cam.y) * s)
   for (const ox of [-W, 0, W])
     for (const oy of [-H, 0, H]) {
       ctx.save()
@@ -103,7 +107,7 @@ function drawScene(ctx: CanvasRenderingContext2D, sc: Scene) {
       drawPlane(ctx, sc, peer.shown, m?.color ?? GREY, label, sc.pics?.get(id) ?? m?.pilot ?? '', id, m?.team)
   }
   if (sc.me.alive) {
-    drawPlane(ctx, sc, sc.me.plane, sc.me.color, 'you', sc.me.pic ?? sc.me.pilot, sc.me.id, sc.me.team)
+    drawPlane(ctx, sc, sc.me.plane, sc.me.color, t('you'), sc.me.pic ?? sc.me.pilot, sc.me.id, sc.me.team)
     drawPulse(ctx, sc)
   }
   for (const b of sc.booms) drawBoom(ctx, b)
@@ -160,6 +164,7 @@ function drawPlane(
     ctx.stroke()
   }
   ctx.fillStyle = '#e5e7eb'
+  ctx.textAlign = 'left' // not the default 'start', which a right-to-left page turns around
   ctx.fillText(`${team ? TEAMS[team].icon + ' ' : ''}${label} ${'♥'.repeat(p.hp)}`, -20, -26)
   ctx.rotate(p.a)
   ctx.fillStyle = color
@@ -226,7 +231,8 @@ function drawPulse(ctx: CanvasRenderingContext2D, sc: Scene) {
 /** Zoomed in: a small arrow at the screen edge toward each player out of view, in their color; teammates get none. */
 function drawArrows(ctx: CanvasRenderingContext2D, sc: Scene) {
   const { view, cam } = sc
-  ctx.setTransform(view.s, 0, 0, view.s, (view.w / 2) * view.s, (view.h / 2) * view.s) // origin at centre
+  const s = view.s * sc.dpr
+  ctx.setTransform(s, 0, 0, s, (view.w / 2) * s, (view.h / 2) * s) // origin at centre
   for (const [id, peer] of sc.peers) {
     if (peer.shown.hp <= 0 || allies(sc.me.team, sc.metas.get(id)?.team)) continue
     const dx = wrapDelta(cam.x, peer.shown.x, W)
@@ -250,11 +256,12 @@ function drawArrows(ctx: CanvasRenderingContext2D, sc: Scene) {
 /** Zoomed in: the whole arena at the bottom centre, between the touch controls. */
 function drawMap(ctx: CanvasRenderingContext2D, sc: Scene) {
   const { view, cam } = sc
-  const mw = Math.round(Math.min(300, Math.max(120, ctx.canvas.width * 0.2))) // phones keep 120, between the thumbs
+  const [cw, ch] = [ctx.canvas.width / sc.dpr, ctx.canvas.height / sc.dpr] // CSS pixels
+  const mw = Math.round(Math.min(300, Math.max(120, cw * 0.2))) // phones keep 120, between the thumbs
   const k = mw / W
   const r = mw / 60 // dot radius, 2 at the smallest
   const mh = H * k
-  ctx.setTransform(1, 0, 0, 1, (ctx.canvas.width - mw) / 2, ctx.canvas.height - mh - 16)
+  ctx.setTransform(sc.dpr, 0, 0, sc.dpr, ((cw - mw) / 2) * sc.dpr, (ch - mh - 16) * sc.dpr)
   ctx.fillStyle = '#11182799'
   ctx.strokeStyle = '#475569'
   ctx.lineWidth = 1

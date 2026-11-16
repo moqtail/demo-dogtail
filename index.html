@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <title>DOGtail by MOQtail</title>
     <!-- Opened from the Home Screen, the game runs without browser bars: the iPhone's only way to fullscreen. -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -12,6 +15,13 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <style>
+      :root {
+        /* Notches and the home bar: iPhones in landscape put the notch over a side edge. */
+        --st: env(safe-area-inset-top, 0px);
+        --sl: env(safe-area-inset-left, 0px);
+        --sr: env(safe-area-inset-right, 0px);
+        --sb: env(safe-area-inset-bottom, 0px);
+      }
       html,
       body {
         margin: 0;
@@ -52,7 +62,7 @@
       }
       #touch button {
         position: fixed;
-        bottom: 24px;
+        bottom: calc(24px + var(--sb));
         width: 88px;
         height: 88px;
         border-radius: 50%;
@@ -102,14 +112,14 @@
         border-color: #fbbf24;
       }
       #touch [data-key='ArrowDown'] {
-        right: 48px;
-        bottom: 160px;
+        right: calc(48px + var(--sr));
+        bottom: calc(160px + var(--sb));
         width: 72px;
         height: 72px;
         font-size: 22px;
       }
       #touch [data-key='Space'] {
-        right: 24px;
+        right: calc(24px + var(--sr));
         width: 120px;
         height: 120px;
         border-color: #f87171;
@@ -121,8 +131,8 @@
       }
       #tools {
         position: fixed;
-        top: 8px;
-        right: 12px;
+        top: calc(8px + var(--st));
+        right: calc(12px + var(--sr));
         z-index: 2; /* settings open over the scoreboard */
         display: flex;
         align-items: flex-start;
@@ -131,6 +141,7 @@
       #fullscreen,
       #map,
       #react-toggle,
+      #feedback,
       #leave {
         font: inherit;
         color: inherit;
@@ -139,6 +150,9 @@
         border: 1px solid #374151;
         border-radius: 6px;
         padding: 4px 10px;
+      }
+      #feedback {
+        text-decoration: none;
       }
       #fullscreen[hidden],
       #map[hidden],
@@ -295,9 +309,11 @@
       }
       #teambar {
         position: fixed;
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
+        top: calc(8px + var(--st));
+        left: 0;
+        right: 0;
+        margin-inline: auto;
+        width: fit-content;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -316,7 +332,7 @@
         width: 120px;
         height: 8px;
         border-radius: 4px;
-        background: linear-gradient(to right, #ef4444 var(--dogs, 50%), #3b82f6 var(--dogs, 50%));
+        background: linear-gradient(to right, #ef4444 var(--red, 50%), #3b82f6 var(--red, 50%));
       }
       #teambar .time {
         font-weight: normal;
@@ -326,8 +342,10 @@
       #banner {
         position: fixed;
         top: 30%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        left: 0;
+        right: 0;
+        margin-inline: auto;
+        width: fit-content;
         margin: 0;
         padding: 12px 24px;
         border-radius: 12px;
@@ -341,7 +359,7 @@
       }
       @keyframes pop {
         from {
-          transform: translate(-50%, -50%) scale(0.5);
+          transform: scale(0.5);
           opacity: 0;
         }
       }
@@ -388,8 +406,8 @@
       }
       #scores {
         position: fixed;
-        top: 48px;
-        right: 12px;
+        top: calc(48px + var(--st));
+        right: calc(12px + var(--sr));
         margin: 0;
         padding: 6px 10px;
         list-style: none;
@@ -427,8 +445,8 @@
       }
       #stats {
         position: fixed;
-        top: 32px;
-        left: 12px;
+        top: calc(32px + var(--st));
+        left: calc(12px + var(--sl));
         margin: 0;
         padding: 6px 8px;
         background: #11182780; /* see-through: the game shows behind the numbers */
@@ -443,8 +461,8 @@
       }
       #feed {
         position: fixed;
-        top: 30px;
-        left: 12px;
+        top: calc(30px + var(--st));
+        left: calc(12px + var(--sl));
         margin: 0;
         padding: 0;
         list-style: none;
@@ -471,8 +489,8 @@
       /* Reactions: bottom right; on touch screens beside FIRE, in reach of the right thumb. */
       #reactions {
         position: fixed;
-        right: 16px;
-        bottom: 16px;
+        right: calc(16px + var(--sr));
+        bottom: calc(16px + var(--sb));
         display: flex;
         gap: 6px;
       }
@@ -499,90 +517,154 @@
       }
       #hud {
         position: fixed;
-        top: 8px;
-        left: 12px;
+        top: calc(8px + var(--st));
+        left: calc(12px + var(--sl));
         white-space: pre;
+      }
+      /* Narrow screens: the team bar goes under the top row instead of over the HUD. */
+      @media (max-width: 1100px) {
+        #teambar {
+          top: calc(44px + var(--st));
+        }
       }
     </style>
   </head>
   <body>
-    <div id="hud">Connecting…</div>
-    <ol id="feed" aria-live="polite" aria-label="Kill feed"></ol>
-    <div id="reactions" hidden aria-label="Reactions"></div>
+    <div id="hud"></div>
+    <ol id="feed" aria-live="polite" data-i18n-aria="killFeed" aria-label="Kill feed"></ol>
+    <div id="reactions" hidden data-i18n-aria="reactions" aria-label="Reactions"></div>
     <div id="tools">
-      <button id="leave" title="Leave the game" hidden>Leave</button>
-      <button id="react-toggle" title="Reactions (E)" aria-label="Reactions">😀</button>
-      <button id="map" title="Minimap (M)" aria-label="Minimap" hidden>🗺</button>
-      <button id="fullscreen" title="Full screen (F)" aria-label="Full screen">⛶</button>
+      <button id="leave" data-i18n-title="leaveTitle" title="Leave the game" hidden data-i18n="leave">Leave</button>
+      <button
+        id="react-toggle"
+        data-i18n-title="reactionsKey"
+        title="Reactions (E)"
+        data-i18n-aria="reactions"
+        aria-label="Reactions"
+      >
+        😀
+      </button>
+      <button
+        id="map"
+        data-i18n-title="minimapKey"
+        title="Minimap (M)"
+        data-i18n-aria="minimap"
+        aria-label="Minimap"
+        hidden
+      >
+        🗺
+      </button>
+      <a
+        id="feedback"
+        href="https://docs.google.com/forms/d/e/1FAIpQLSfJfhIdlVMdyu4vVRfRx72jpdy06Um8c3Z0LZUWzCu_6p4eCg/viewform"
+        target="_blank"
+        rel="noopener"
+        data-i18n-title="feedback"
+        title="Send feedback"
+        data-i18n-aria="feedback"
+        aria-label="Send feedback"
+        >💬</a
+      >
+      <button
+        id="fullscreen"
+        data-i18n-title="fullscreenKey"
+        title="Full screen (F)"
+        data-i18n-aria="fullscreen"
+        aria-label="Full screen"
+      >
+        ⛶
+      </button>
       <details id="settings">
-        <summary>⚙ Settings</summary>
+        <summary>⚙ <span data-i18n="settings">Settings</span></summary>
         <fieldset>
-          <legend>Sounds</legend>
-          <label><input type="checkbox" data-sound="fire" /> Firing</label>
-          <label><input type="checkbox" data-sound="hit" /> Getting hit</label>
-          <label><input type="checkbox" data-sound="death" /> Shot down</label>
+          <legend data-i18n="sounds">Sounds</legend>
+          <label><input type="checkbox" data-sound="fire" /> <span data-i18n="soundFire">Firing</span></label>
+          <label><input type="checkbox" data-sound="hit" /> <span data-i18n="soundHit">Getting hit</span></label>
+          <label><input type="checkbox" data-sound="death" /> <span data-i18n="soundDeath">Shot down</span></label>
         </fieldset>
         <fieldset>
-          <legend>Network</legend>
-          <label><input type="checkbox" id="show-stats" /> Show stats (S)</label>
+          <legend data-i18n="network">Network</legend>
+          <label><input type="checkbox" id="show-stats" /> <span data-i18n="showStats">Show stats (S)</span></label>
         </fieldset>
         <fieldset>
-          <legend>Aces</legend>
+          <legend data-i18n="aces">Aces</legend>
           <label
-            >Fill quiet rooms
+            ><span data-i18n="fillRooms">Fill quiet rooms</span>
             <select id="ace-level">
-              <option value="off">Off</option>
-              <option value="easy">Easy</option>
-              <option value="moderate">Moderate</option>
-              <option value="hard">Hard</option>
+              <option value="off" data-i18n="off">Off</option>
+              <option value="easy" data-i18n="easy">Easy</option>
+              <option value="moderate" data-i18n="moderate">Moderate</option>
+              <option value="hard" data-i18n="hard">Hard</option>
             </select>
           </label>
         </fieldset>
         <fieldset>
-          <legend>Players</legend>
-          <label><input type="checkbox" id="show-pics" checked /> Show their pictures</label>
+          <legend data-i18n="players">Players</legend>
+          <label
+            ><input type="checkbox" id="show-pics" checked />
+            <span data-i18n="showPics">Show their pictures</span></label
+          >
+        </fieldset>
+        <fieldset>
+          <legend data-i18n="language">Language</legend>
+          <select id="lang" aria-label="Language"></select>
         </fieldset>
       </details>
     </div>
     <canvas id="game"></canvas>
     <pre id="stats" hidden></pre>
-    <ol id="scores" aria-label="Scoreboard"></ol>
-    <button id="teambar" hidden aria-label="Team scores this round">
-      <span class="dogs"></span><span class="bar"></span><span class="cats"></span><span class="time"></span>
+    <ol id="scores" data-i18n-aria="scoreboard" aria-label="Scoreboard"></ol>
+    <button id="teambar" hidden data-i18n-aria="teamScores" aria-label="Team scores this round">
+      <span class="red"></span><span class="bar"></span><span class="blue"></span><span class="time"></span>
     </button>
     <p id="banner" hidden></p>
     <form id="join">
       <h1>DOGtail</h1>
-      <label>Your name <input type="text" name="name" maxlength="16" required autocomplete="nickname" /></label>
-      <fieldset id="colors"><legend>Color</legend></fieldset>
-      <fieldset id="pilots"><legend>Pilot</legend></fieldset>
-      <fieldset id="teams"><legend>Team</legend></fieldset>
+      <label
+        ><span data-i18n="yourName">Your name</span>
+        <input type="text" name="name" maxlength="16" required autocomplete="nickname"
+      /></label>
+      <fieldset id="colors"><legend data-i18n="color">Color</legend></fieldset>
+      <fieldset id="pilots"><legend data-i18n="pilot">Pilot</legend></fieldset>
+      <fieldset id="teams"><legend data-i18n="team">Team</legend></fieldset>
       <input type="file" id="pic-file" accept="image/*" hidden />
-      <label>Room <input type="text" name="room" maxlength="32" autocapitalize="off" /></label>
+      <label
+        ><span data-i18n="room">Room</span> <input type="text" name="room" maxlength="32" autocapitalize="off"
+      /></label>
       <details id="relay-box">
-        <summary>Relay</summary>
+        <summary data-i18n="relay">Relay</summary>
         <input
           type="text"
           name="relay"
+          data-i18n-aria="relayUrl"
           aria-label="Relay URL"
           autocapitalize="off"
           spellcheck="false"
           pattern="(moqt|https)://.+"
+          data-i18n-title="relayHint"
           title="A relay URL, such as moqt://relay.moqtail.dev"
         />
       </details>
       <p id="notice"></p>
       <p id="invite"></p>
-      <button>Join</button>
-      <p id="powered">Powered by <a href="https://moqtail.dev" target="_blank" rel="noopener">MOQtail</a></p>
+      <button data-i18n="join">Join</button>
+      <p id="powered">
+        <span data-i18n="poweredBy">Powered by</span>
+        <a href="https://moqtail.dev" target="_blank" rel="noopener">MOQtail</a>
+      </p>
     </form>
     <div id="touch">
-      <div id="stick" role="application" aria-label="Steering: drag toward where to fly, past the ring to boost">
+      <div
+        id="stick"
+        role="application"
+        data-i18n-aria="steering"
+        aria-label="Steering: drag toward where to fly, past the ring to boost"
+      >
         <div class="base"></div>
         <div class="knob"></div>
       </div>
-      <button data-key="ArrowDown" aria-label="Drift">▼</button>
-      <button data-key="Space" aria-label="Fire">FIRE</button>
+      <button data-key="ArrowDown" data-i18n-aria="drift" aria-label="Drift">▼</button>
+      <button data-key="Space" data-i18n-aria="fire" aria-label="Fire" data-i18n="fireButton">FIRE</button>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
