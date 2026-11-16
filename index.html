@@ -2,10 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
     <title>DOGtail by MOQtail</title>
     <!-- Opened from the Home Screen, the game runs without browser bars: the iPhone's only way to fullscreen. -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -13,7 +10,8 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <!-- Not black-translucent: on the home screen that draws the page under the status bar, which iOS blurs. -->
+    <!-- Not black-translucent, and no viewport-fit=cover: either one lays the home-screen app out under
+         the status bar, which iOS blurs. Without cover the safe-area insets below are 0, which is fine. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <style>
       :root {
