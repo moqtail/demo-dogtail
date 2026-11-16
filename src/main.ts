@@ -67,8 +67,17 @@ import { Ace, type Level } from './ace'
 import type { Brain } from './brain'
 import { watchStats } from './netstats'
 import { play, setSound, soundOn, type SoundName } from './sound'
+import { currentLang, LANGS, setLang, t, type Lang } from './i18n'
 
 declare const __CERT_HASH__: string // injected by vite.config.ts
+
+await setLang() // before anything is shown, so the page appears in its language
+
+// Settings → Language: changes the page at once, and is remembered on this device.
+const langSelect = document.getElementById('lang') as HTMLSelectElement
+for (const [code, name] of Object.entries(LANGS)) langSelect.add(new Option(name, code))
+langSelect.value = currentLang()
+langSelect.addEventListener('change', () => (langSelect.blur(), void setLang(langSelect.value as Lang)))
 
 const params = new URLSearchParams(location.search)
 // With a LAN cert (npm run dev after make-cert.sh) the relay runs on this machine; otherwise the public one.
@@ -238,7 +247,7 @@ let streak = 0 // kills since you were last shot down; every STREAK of them earn
 const feedList = document.getElementById('feed')!
 const FEED_SHOW = 5000
 const who = (id: string) => {
-  const m = id === me ? { name: 'you', color: myColor, pilot: myPilot } : metas.get(id)
+  const m = id === me ? { name: t('you'), color: myColor, pilot: myPilot } : metas.get(id)
   const span = document.createElement('span')
   span.textContent = `${m?.pilot ? m.pilot + ' ' : ''}${m?.name ?? id}`
   span.style.color = m?.color ?? '#9ca3af'
@@ -337,14 +346,18 @@ try {
   // Storage blocked: the default.
 }
 let view: View = { s: 1, w: W, h: H }
+let dpr = 1
 let cam = { x: W / 2, y: H / 2 } // arena point at the centre of the view
 function fit() {
   const v = viewScale(Math.min(innerWidth / W, innerHeight / H), zoom)
   zoom = v.zoom
   view = { s: v.s, w: Math.min(W, innerWidth / v.s), h: Math.min(H, innerHeight / v.s) }
   minimap.button.hidden = view.w >= W && view.h >= H // the minimap only exists while zoomed in
-  canvas.width = view.w * v.s
-  canvas.height = view.h * v.s
+  dpr = Math.min(devicePixelRatio || 1, 2) // 3× phones draw at 2×: sharp enough, and a third fewer pixels
+  canvas.style.width = `${view.w * v.s}px`
+  canvas.style.height = `${view.h * v.s}px`
+  canvas.width = Math.round(view.w * v.s * dpr)
+  canvas.height = Math.round(view.h * v.s * dpr)
 }
 function zoomBy(factor: number) {
   zoom = factor ? zoom * factor : 1 // 0: back to the default
@@ -417,7 +430,7 @@ const startColor = COLORS.includes(saved.color!) ? saved.color! : COLORS[Math.fl
 for (const c of COLORS) {
   const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'color', value: c })
   radio.style.setProperty('--c', c)
-  radio.setAttribute('aria-label', `color ${COLORS.indexOf(c) + 1}`)
+  radio.setAttribute('aria-label', t('colorN', { n: COLORS.indexOf(c) + 1 }))
   radio.checked = c === startColor
   document.getElementById('colors')!.append(radio)
 }
@@ -427,7 +440,7 @@ const startPilot = PILOTS.includes(saved.pilot!)
 for (const e of PILOTS) {
   const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'pilot', value: e })
   radio.dataset.e = e || '✈'
-  radio.setAttribute('aria-label', e ? `pilot ${e}` : 'no pilot')
+  radio.setAttribute('aria-label', e ? t('pilotE', { e }) : t('noPilot'))
   radio.checked = e === startPilot
   document.getElementById('pilots')!.append(radio)
 }
@@ -435,7 +448,7 @@ for (const e of PILOTS) {
 // cropped to a square, shrunk to PIC×PIC and kept on this device; tapping it again picks another.
 let myPicData = unpackPic(saved.pic) ? saved.pic : undefined
 const picRadio = Object.assign(document.createElement('input'), { type: 'radio', name: 'pilot', value: 'pic' })
-picRadio.setAttribute('aria-label', 'your picture as pilot')
+picRadio.setAttribute('aria-label', t('yourPicture'))
 const showPicRadio = () => {
   picRadio.dataset.e = myPicData ? '' : '📷'
   picRadio.style.backgroundImage = myPicData ? `url(${picCanvas(myPicData).toDataURL()})` : ''
@@ -467,7 +480,7 @@ picFile.addEventListener('change', async () => {
     picRadio.checked = true
     showPicRadio()
   } catch {
-    document.getElementById('notice')!.textContent = 'That picture could not be read. Try another one.'
+    document.getElementById('notice')!.textContent = t('picError')
   } finally {
     URL.revokeObjectURL(url)
   }
@@ -475,16 +488,16 @@ picFile.addEventListener('change', async () => {
 const field = (n: string) => joinForm.elements.namedItem(n) as HTMLInputElement
 field('name').value = saved.name ?? ''
 // Team: Auto joins the smaller side, Solo plays alone. A link's ?team= picks one.
-const TEAM_CHOICES = ['auto', 'dogs', 'cats', 'solo']
+const TEAM_CHOICES = ['auto', 'red', 'blue', 'solo']
 const startTeam = [params.get('team'), saved.team].find((t) => TEAM_CHOICES.includes(t!)) ?? 'auto'
-for (const t of TEAM_CHOICES) {
-  const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'team', value: t })
+for (const c of TEAM_CHOICES) {
+  const radio = Object.assign(document.createElement('input'), { type: 'radio', name: 'team', value: c })
   const label = document.createElement('label')
-  label.append(
-    radio,
-    t === 'dogs' || t === 'cats' ? `${TEAMS[t].icon} ${TEAMS[t].name}` : t === 'auto' ? '🎲 Auto' : '🎯 Solo',
-  )
-  radio.checked = t === startTeam
+  const icon = c === 'red' || c === 'blue' ? TEAMS[c].icon : c === 'auto' ? '🎲' : '🎯'
+  const name = Object.assign(document.createElement('span'), { textContent: t(c as 'red') })
+  name.dataset.i18n = c // follows a change of language
+  label.append(radio, `${icon} `, name)
+  radio.checked = c === startTeam
   document.getElementById('teams')!.append(label)
 }
 const teamChoice = () => (joinForm.elements.namedItem('team') as RadioNodeList).value || 'auto'
@@ -506,17 +519,16 @@ const roomUrl = () => {
   u.searchParams.set('room', field('room').value.trim() || defaultRoom)
   if (relayValue() === DEFAULT_RELAY) u.searchParams.delete('relay')
   else u.searchParams.set('relay', relayValue())
-  // A side you picked goes along, so friends land on it: "come help the dogs".
+  // A side you picked goes along, so friends land on it: "come help red".
   const t = teamChoice()
-  if (t === 'dogs' || t === 'cats') u.searchParams.set('team', t)
+  if (t === 'red' || t === 'blue') u.searchParams.set('team', t)
   else u.searchParams.delete('team')
   u.searchParams.delete('full')
   return u.href
 }
-const showInvite = () => (document.getElementById('invite')!.textContent = `Invite others: ${roomUrl()}`)
+const showInvite = () => (document.getElementById('invite')!.textContent = t('invite', { url: roomUrl() }))
 const fullRoom = params.get('full')
-if (fullRoom)
-  document.getElementById('notice')!.textContent = `Room ${fullRoom} is full (${ROOM_CAP} players). Here is a new one.`
+if (fullRoom) document.getElementById('notice')!.textContent = t('roomFull', { room: fullRoom, n: ROOM_CAP })
 field('room').addEventListener('input', showInvite)
 field('relay').addEventListener('input', showInvite)
 document.getElementById('teams')!.addEventListener('change', showInvite)
@@ -538,7 +550,7 @@ const myPic = pilotChoice === 'pic' ? myPicData : undefined
 const myPicImg = myPic ? picCanvas(myPic) : undefined
 const myPilot = pilotChoice === 'pic' ? '' : pilotChoice // the emoji in meta; a picture goes as its own message
 let myChoice = teamChoice()
-let myTeam: Team = myChoice === 'dogs' || myChoice === 'cats' ? myChoice : ''
+let myTeam: Team = myChoice === 'red' || myChoice === 'blue' ? myChoice : ''
 const roundKills = new RoundKills()
 const clockNow = () => Date.now() + (clock.offset ?? 0)
 try {
@@ -565,7 +577,7 @@ const leave = document.getElementById('leave')!
 leave.hidden = false
 leave.addEventListener('click', () => location.reload())
 const joinedAt = Date.now()
-hud.textContent = 'Connecting…'
+hud.textContent = t('connecting')
 
 // Network stats panel: ?debug, the S key or Settings → Network.
 const statsPanel = document.getElementById('stats')!
@@ -621,7 +633,7 @@ function onEvent(id: string, m: EventMsg) {
       roundKills.at(clockNow()).kills++
       if (++streak % STREAK === 0) {
         rapidFor = Math.max(rapidFor, RAPID)
-        flash(`🔥 ${streak} in a row! ${POWER_ICON.rapid}`)
+        flash(`🔥 ${t('streak', { n: streak })} ${POWER_ICON.rapid}`)
         play('hit')
       }
       scoreChanged = true
@@ -644,7 +656,7 @@ const conn = await connect(
   },
   (client) => (stats = watchStats(client, clock, (id) => metas.get(id)?.name ?? id, statsPanel)),
 ).catch((err) => {
-  hud.textContent = `Could not connect to ${relay}: ${err}`
+  hud.textContent = t('couldNotConnect', { relay, err: String(err) })
   throw err
 })
 /** Sends on a player's track and hands the message to this tab's aces and game, which the relay won't. */
@@ -708,9 +720,9 @@ setInterval(async () => {
   // In a team room aces fill both sides to TEAM_FILL, or to the bigger side's people, so they are even.
   const peopleTeams = [myTeam, ...people.map(([id]) => metas.get(id)?.team)]
   const teams = teamMode()
-  const dogs = peopleTeams.filter((t) => t === 'dogs').length
-  const cats = peopleTeams.filter((t) => t === 'cats').length
-  const fill = teams ? 2 * Math.max(TEAM_FILL, dogs, cats) - dogs - cats : ROOM_FILL - people.length - 1
+  const red = peopleTeams.filter((t) => t === 'red').length
+  const blue = peopleTeams.filter((t) => t === 'blue').length
+  const fill = teams ? 2 * Math.max(TEAM_FILL, red, blue) - red - blue : ROOM_FILL - people.length - 1
   const want = host ? Math.max(0, fill) : 0
   // Each ace takes the smaller side, counting the aces already there; out of team play, none.
   for (const ace of aces.values())
@@ -729,7 +741,7 @@ setInterval(async () => {
       const bigger = teams && sideAhead(sides, 1) // leave from the bigger side, so they stay even
       dropAce((newestFirst.find(([, a]) => a.team === bigger) ?? newestFirst[0]!)[0])
     } else if (crosser) {
-      crosser.switchTo(crossing === 'dogs' ? 'cats' : 'dogs')
+      crosser.switchTo(crossing === 'red' ? 'blue' : 'red')
     } else if (aces.size < want) {
       brain ??= (await import('./brain.json')).default as Brain // only a hosting tab downloads the weights
       const id = `z${me}${aceCount++}`
@@ -754,7 +766,7 @@ setInterval(() => aces.forEach((a) => a.meta()), 2000)
 // two joining at once may both stay, which is fine.
 /** A room plays teams once any person in it (not an ace) has picked a side. */
 const teamMode = () => !!myTeam || [...peers.keys()].some((id) => !isAce(id) && metas.get(id)?.team)
-// Auto: join the smaller side (Dogs when you're first), once everyone's meta has arrived; it repeats
+// Auto: join the smaller side (Red when you're first), once everyone's meta has arrived; it repeats
 // every 2 s.
 setTimeout(() => {
   if (myChoice !== 'auto' || myTeam) return
@@ -790,7 +802,7 @@ scores.classList.toggle('short', !boardOpen)
 scores.addEventListener('click', () => (boardOpen = !boardOpen))
 setInterval(() => {
   const all = [
-    { name: `${myName} (you)`, color: myColor, kills, deaths, team: myTeam, you: true },
+    { name: t('youSuffix', { name: myName }), color: myColor, kills, deaths, team: myTeam, you: true },
     ...[...peers.keys()].map((id) => ({
       ...(metas.get(id) ?? { name: id, color: '#9ca3af', pilot: '', kills: 0, deaths: 0 }),
       you: false,
@@ -804,7 +816,7 @@ setInterval(() => {
   const more = Math.min(all.length, 10) - shown.length
   const toggle = Object.assign(document.createElement('li'), {
     className: 'more',
-    textContent: boardOpen ? '▴' : `+${more} more ▾`,
+    textContent: boardOpen ? '▴' : `${t('more', { n: more })} ▾`,
   })
   scores.replaceChildren(
     ...shown.map((r) => {
@@ -832,36 +844,29 @@ function flash(text: string) {
   bannerTimer = setTimeout(() => (banner.hidden = true), 4000)
 }
 let shownRound = -1
-let shownScore = { dogs: 0, cats: 0 }
+let shownScore = { red: 0, blue: 0 }
 function showTeams() {
   const now = clockNow()
   const round = roundAt(now)
   if (round !== shownRound) {
-    const { dogs, cats } = shownScore
-    if (shownRound >= 0 && teamMode() && dogs + cats > 0) {
-      const d = TEAMS.dogs,
-        c = TEAMS.cats
-      flash(
-        dogs === cats
-          ? `Draw, ${dogs}–${cats}`
-          : dogs > cats
-            ? `${d.icon} ${d.name} win ${dogs}–${cats}! 🎉`
-            : `${c.icon} ${c.name} win ${cats}–${dogs}! 🎉`,
-      )
+    const { red, blue } = shownScore
+    if (shownRound >= 0 && teamMode() && red + blue > 0) {
+      const [won, a, b] = red > blue ? (['red', red, blue] as const) : (['blue', blue, red] as const)
+      flash(red === blue ? t('draw', { a, b }) : `${t('wins', { team: `${TEAMS[won].icon} ${t(won)}`, a, b })} 🎉`)
     }
     shownRound = round
   }
   teamBar.hidden = !teamMode()
   if (teamBar.hidden) return
   shownScore = teamScores([myMeta(), ...[...peers.keys()].flatMap((id) => metas.get(id) ?? [])], round)
-  const { dogs, cats } = shownScore
+  const { red, blue } = shownScore
   const left = Math.ceil((ROUND_MS - (now % ROUND_MS)) / 1000)
-  const share = dogs + cats ? (dogs / (dogs + cats)) * 100 : 50
-  teamBar.style.setProperty('--dogs', `${share}%`)
-  teamBar.querySelector('.dogs')!.textContent = `${TEAMS.dogs.icon} ${dogs}`
-  teamBar.querySelector('.cats')!.textContent = `${cats} ${TEAMS.cats.icon}`
+  const share = red + blue ? (red / (red + blue)) * 100 : 50
+  teamBar.style.setProperty('--red', `${share}%`)
+  teamBar.querySelector('.red')!.textContent = `${TEAMS.red.icon} ${red}`
+  teamBar.querySelector('.blue')!.textContent = `${blue} ${TEAMS.blue.icon}`
   teamBar.querySelector('.time')!.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
-  teamBar.title = myTeam ? 'Switch sides (T): only while shot down' : 'Join the smaller side (T)'
+  teamBar.title = myTeam ? t('switchSides') : t('joinSmaller')
 }
 teamBar.addEventListener('click', () => (teamBar.blur(), switchTeam()))
 let switchHintAt = -Infinity
@@ -870,7 +875,7 @@ function switchTeam() {
   if (!joined) return
   if (!myTeam) myTeam = smallerTeam([...peers.keys()].filter((id) => !isAce(id)).map((id) => metas.get(id)?.team))
   else if (deadFor > 0) {
-    myTeam = myTeam === 'dogs' ? 'cats' : 'dogs'
+    myTeam = myTeam === 'red' ? 'blue' : 'red'
     roundKills.kills = 0 // your kills this round stay behind
   } else return void (switchHintAt = performance.now())
   myChoice = myTeam
@@ -1024,6 +1029,7 @@ function frame(now: number) {
 
   drawFrame(ctx, {
     view,
+    dpr,
     cam,
     bullets,
     drops,
@@ -1042,10 +1048,10 @@ function frame(now: number) {
   ].join('')
   const status = alive
     ? `HP ${plane.hp}/${maxHpFor(peers.size + 1)}${powers}`
-    : `shot down by ${killedBy} · respawning in ${Math.ceil(deadFor)}`
-  const side = myTeam ? ` · ${TEAMS[myTeam].icon} ${TEAMS[myTeam].name}` : ''
-  const hint = now - switchHintAt < 2500 ? ' · switch sides when shot down' : ''
-  hud.textContent = `room ${room}${side} · ${status} · players ${peers.size + 1}${hint}`
+    : t('shotDownBy', { name: killedBy, s: Math.ceil(deadFor) })
+  const side = myTeam ? ` · ${TEAMS[myTeam].icon} ${t(myTeam)}` : ''
+  const hint = now - switchHintAt < 2500 ? ` · ${t('switchHint')}` : ''
+  hud.textContent = `${t('hudRoom', { room })}${side} · ${status} · ${t('hudPlayers', { n: peers.size + 1 })}${hint}`
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

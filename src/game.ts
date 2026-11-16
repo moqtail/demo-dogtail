@@ -80,28 +80,28 @@ export function cleanMeta(m: Partial<MetaMsg>): MetaMsg {
     pilot: PILOTS.includes(m.pilot as string) ? (m.pilot as string) : '',
     kills: n(m.kills),
     deaths: n(m.deaths),
-    team: m.team === 'dogs' || m.team === 'cats' ? m.team : '',
+    team: m.team === 'red' || m.team === 'blue' ? m.team : '',
     round: n(m.round),
     rk: n(m.rk),
   }
 }
 
-export type Team = '' | 'dogs' | 'cats'
+export type Team = '' | 'red' | 'blue'
 export const TEAMS = {
-  dogs: { icon: '🐶', name: 'Dogs', color: '#ef4444' },
-  cats: { icon: '🐱', name: 'Cats', color: '#3b82f6' },
+  red: { icon: '🔴', color: '#ef4444' }, // names are in i18n.ts
+  blue: { icon: '🔵', color: '#3b82f6' },
 } as const
 /** Same side: bullets pass through, and aces leave them alone. Players without a team have no allies. */
 export const allies = (a: Team | undefined, b: Team | undefined) => !!a && a === b
-/** The side with fewer players, where newcomers and aces go; dogs on a tie. */
-export function smallerTeam(teams: (Team | undefined)[]): 'dogs' | 'cats' {
+/** The side with fewer players, where newcomers and aces go; red on a tie. */
+export function smallerTeam(teams: (Team | undefined)[]): 'red' | 'blue' {
   const count = (t: Team) => teams.filter((x) => x === t).length
-  return count('cats') < count('dogs') ? 'cats' : 'dogs'
+  return count('blue') < count('red') ? 'blue' : 'red'
 }
 /** The side ahead by at least `by` players, if any: the one an ace leaves to even things out. */
-export function sideAhead(teams: (Team | undefined)[], by: number): 'dogs' | 'cats' | undefined {
-  const lead = teams.filter((x) => x === 'dogs').length - teams.filter((x) => x === 'cats').length
-  return lead >= by ? 'dogs' : -lead >= by ? 'cats' : undefined
+export function sideAhead(teams: (Team | undefined)[], by: number): 'red' | 'blue' | undefined {
+  const lead = teams.filter((x) => x === 'red').length - teams.filter((x) => x === 'blue').length
+  return lead >= by ? 'red' : -lead >= by ? 'blue' : undefined
 }
 
 /** Team rounds follow the shared clock, so every player agrees when one ends without a referee. */
@@ -119,7 +119,7 @@ export class RoundKills {
 }
 /** Each side's kills in `round`, from the metas of the players in it. */
 export function teamScores(players: MetaMsg[], round: number) {
-  const score = { dogs: 0, cats: 0 }
+  const score = { red: 0, blue: 0 }
   for (const p of players) if (p.team && p.round === round) score[p.team] += p.rk ?? 0
   return score
 }

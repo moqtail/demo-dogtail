@@ -105,14 +105,14 @@ describe('game rules', () => {
   })
 
   it('plays teams: allies, the smaller side, and round scores', () => {
-    expect(allies('dogs', 'dogs')).toBe(true)
-    expect(allies('dogs', 'cats')).toBe(false)
+    expect(allies('red', 'red')).toBe(true)
+    expect(allies('red', 'blue')).toBe(false)
     expect(allies('', '')).toBe(false) // players without a team fight everyone
-    expect(smallerTeam([])).toBe('dogs')
-    expect(smallerTeam(['dogs', '', 'cats', 'dogs'])).toBe('cats')
-    expect(sideAhead(['dogs', '', 'cats', 'dogs'], 1)).toBe('dogs')
-    expect(sideAhead(['dogs', '', 'cats', 'dogs'], 2)).toBeUndefined()
-    expect(sideAhead(['cats', 'cats', 'cats', 'dogs'], 2)).toBe('cats')
+    expect(smallerTeam([])).toBe('red')
+    expect(smallerTeam(['red', '', 'blue', 'red'])).toBe('blue')
+    expect(sideAhead(['red', '', 'blue', 'red'], 1)).toBe('red')
+    expect(sideAhead(['red', '', 'blue', 'red'], 2)).toBeUndefined()
+    expect(sideAhead(['blue', 'blue', 'blue', 'red'], 2)).toBe('blue')
     expect(sideAhead([], 1)).toBeUndefined()
     const meta = (team: MetaMsg['team'], round: number, rk: number): MetaMsg => ({
       ...{ name: 'p', color: '', pilot: '', kills: 0, deaths: 0 },
@@ -120,8 +120,8 @@ describe('game rules', () => {
     })
     // Only this round's kills count, and only for players on a side.
     expect(
-      teamScores([meta('dogs', 7, 3), meta('dogs', 7, 2), meta('cats', 7, 4), meta('cats', 6, 9), meta('', 7, 5)], 7),
-    ).toEqual({ dogs: 5, cats: 4 })
+      teamScores([meta('red', 7, 3), meta('red', 7, 2), meta('blue', 7, 4), meta('blue', 6, 9), meta('', 7, 5)], 7),
+    ).toEqual({ red: 5, blue: 4 })
     const rk = new RoundKills()
     rk.at(ROUND_MS * 7 + 1).kills++
     expect(rk.at(ROUND_MS * 7 + 2)).toMatchObject({ round: 7, kills: 1 })
@@ -165,7 +165,7 @@ describe('game rules', () => {
       round: 0,
       rk: 0,
     })
-    expect(cleanMeta({ team: 'cats', round: 3, rk: 2 })).toMatchObject({ team: 'cats', round: 3, rk: 2 })
+    expect(cleanMeta({ team: 'blue', round: 3, rk: 2 })).toMatchObject({ team: 'blue', round: 3, rk: 2 })
     expect(cleanMeta({ team: 'wolves' as never }).team).toBe('')
     expect(cleanMeta({}).name).toBe('?')
     expect(cleanMeta({ pilot: '🦆' }).pilot).toBe('🦆')
