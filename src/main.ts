@@ -104,9 +104,12 @@ voiceSelect.addEventListener('change', () => {
 })
 /** V or the mic button: on an open mic a press mutes or unmutes; push-to-talk talks while held. */
 function micPress(down: boolean) {
-  if (!voice || voice.mode === 'off') return
-  if (voice.mode === 'ptt') voice.held = down
-  else if (down) voice.muted = !voice.muted
+  if (!voice) return
+  if (!down) return void (voice.held = false) // a release always lets go, whatever changed meanwhile
+  if (micButton.hidden) return // no team to talk to (or voice off): V does nothing, so it can't unmute for later
+  if (voice.mode === 'ptt') voice.held = true
+  else voice.muted = !voice.muted
+  voice.talk() // the first time, this asks for the microphone
 }
 micButton.addEventListener('pointerdown', (e) => (e.preventDefault(), micPress(true)))
 for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const)
