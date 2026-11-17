@@ -43,7 +43,7 @@ type Talker = { decoder: AudioDecoder; node: AudioWorkletNode; n: number }
 
 export class Voice {
   mode: VoiceMode = 'open'
-  muted = false // open mic: the mute button
+  muted = true // open mic: starts muted, so the microphone is only asked for when the player unmutes
   held = false // push-to-talk: V or the mic button held
   micDenied = false
   /** When each player's voice last arrived (performance.now() ms). */
@@ -117,7 +117,18 @@ export class Voice {
     await this.client.publishNamespace(this.#ns)
     this.#send = await openTrack(this.client, this.#ns, 'voice', 0)
     this.#cancel = (await this.client.subscribeTracks(Tuple.fromUtf8Path(prefix))).cancel
-    if (canTalk && !this.micDenied) await this.#startMic()
+    if (this.#wantMic()) await this.#startMic()
+  }
+
+  /** Whether the player has asked to talk: unmuted, or holding push-to-talk. */
+  #wantMic = () => canTalk && !this.micDenied && !!this.#send && (this.mode === 'ptt' ? this.held : !this.muted)
+
+  /**
+   * Called when the player unmutes or holds push-to-talk: the microphone (and the browser's permission
+   * prompt) comes only then, never just for joining a team.
+   */
+  talk() {
+    this.#busy = this.#busy.then(() => (this.#wantMic() ? this.#startMic() : undefined))
   }
 
   /** The microphone and encoder, once; asking for the microphone shows the browser's permission prompt. */
